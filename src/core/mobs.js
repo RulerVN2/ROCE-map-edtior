@@ -169,3 +169,20 @@ export function mobGroups(mobs) {
   return out;
 }
 export const mobGroupKey = (m, i) => (m.g ? `g${m.g}|${m.label}|${m.id}` : `i${i}`);
+
+// Ký hiệu hiển thị trong biểu tượng trên map: nhìn là biết loại quân / công trình (emoji; không khớp thì chữ cái đầu).
+const GLYPHS = [
+  [/placeholder/, '👻'], [/king|hero/, '👑'], [/villager/, '⛏'], [/militia|swordsman|champion|legionary/, '⚔'], [/spearman|pikeman|halberd/, '🔱'],
+  [/skirmisher|elite_skirm/, '🎯'], [/crossbow|archer|bow/, '🏹'], [/scout|knight|cavalry|cavalier|paladin|camel|horse/, '🐎'], [/monk/, '✝'],
+  [/ram|mangonel|onager|scorpion|catapult|trebuchet|siege/, '🪨'], [/galley|ship|boat|fishing/, '⛵'], [/trade_cart|cart/, '🛒'],
+  [/town_center/, '🏛'], [/house/, '🏠'], [/barracks/, '⚔'], [/archery/, '🏹'], [/stable/, '🐎'], [/siege_workshop/, '🪨'], [/mill|farm/, '🌾'],
+  [/lumber/, '🪵'], [/mining/, '⛏'], [/blacksmith/, '🔨'], [/market/, '💰'], [/castle/, '🏰'], [/tower|outpost/, '🗼'], [/monastery/, '⛪'],
+  [/dock/, '⚓'], [/wall|gate/, '🧱'], [/university/, '🎓'], [/wonder/, '🗽'],
+  [/zombie/, '🧟'], [/skeleton/, '💀'], [/creeper/, '💥'], [/spider/, '🕷'], [/witch/, '🧙'], [/enderman/, '👁'], [/golem/, '🤖'], [/pillager|vindicator|evoker/, '🪓'],
+  [/cow/, '🐄'], [/pig/, '🐖'], [/sheep/, '🐑'], [/chicken/, '🐔'], [/wolf/, '🐺'], [/stand/, '🧍'], [/minecart/, '🛤'],
+];
+export function mobGlyph(id) {
+  const k = String(id ?? '').replace(/^[a-z0-9_.-]*:/, '').toLowerCase();
+  for (const [re, g] of GLYPHS) if (re.test(k)) return g;
+  return k ? k[0].toUpperCase() : '?';
+}

@@ -159,3 +159,31 @@ dialog menu { display: flex; justify-content: flex-end; gap: 8px; margin: 0; pad
 .sc-card select, .sc-body select, .sc-item select { flex: 1 1 0; min-width: 0; max-width: 100%; }
 .sc-card input[type="text"], .sc-item input[type="text"] { min-width: 0; }
 .sc-item .btnrow select { flex: 1 1 0; }
+
+.trg-chip { display: block; width: 100%; text-align: left; margin: 2px 0; padding: 3px 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trg-chip.sel { background: #24507f; border-color: #4a90d9; }
+.trg-win { position: fixed; z-index: 50; display: flex; flex-direction: column; min-width: 640px; min-height: 360px; resize: both; overflow: hidden; background: #20242b; border: 1px solid #4a90d9; border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.6); }
+.trg-bar { display: flex; align-items: center; padding: 6px 10px; background: #2a2f38; border-bottom: 1px solid #3c434f; cursor: move; touch-action: none; }
+.trg-body { flex: 1; display: flex; min-height: 0; }
+.trg-left { width: 250px; display: flex; flex-direction: column; border-right: 1px solid #343a45; min-height: 0; }
+.trg-tools { display: flex; gap: 4px; padding: 6px; flex-wrap: wrap; border-bottom: 1px solid #343a45; }
+.trg-tools button { padding: 3px 8px; }
+.trg-scroll { overflow: auto; min-height: 0; }
+.trg-listcol { flex: 1; }
+.trg-row { display: flex; align-items: center; gap: 6px; padding: 5px 8px; cursor: pointer; border-bottom: 1px solid #2b303a; }
+.trg-row:hover { background: #262b34; }
+.trg-row.sel { background: #24507f; }
+.trg-row span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trg-row span.off { opacity: .55; }
+.trg-row small { color: #9aa3b0; white-space: nowrap; }
+.trg-right { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 8px; gap: 8px; }
+.trg-right .sc-flags input[type="text"] { background: #181b21; border: 1px solid #3c434f; border-radius: 6px; padding: 4px 8px; }
+.trg-cols { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-height: 0; }
+.trg-col { display: flex; flex-direction: column; gap: 6px; min-height: 0; border: 1px solid #343a45; border-radius: 6px; padding: 6px; }
+.trg-col:first-child .sc-item { border-left-color: #d9a441; }
+.trg-col:last-child .sc-item { border-left-color: #4fae6b; }
+.trg-colhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.trg-items { flex: 1; display: flex; flex-direction: column; gap: 5px; padding-right: 2px; }
+.trg-win .sc-item { flex: 0 0 auto; }
+.trg-win select, .trg-win input[type="text"], .trg-win input[type="number"] { background: #181b21; border: 1px solid #3c434f; border-radius: 5px; padding: 3px 5px; }
+.trg-win .sc-f select, .trg-win .sc-f input { max-width: 170px; }

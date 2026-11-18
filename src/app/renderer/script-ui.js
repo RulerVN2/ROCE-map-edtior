@@ -141,45 +141,97 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
     return mk('div', { className: 'sc-item' }, [mk('div', { className: 'btnrow' }, [typeSel, del]), mk('div', { className: 'sc-fields' }, fields)]);
   }
 
+  // ---- Trigger: danh sách gọn ở thanh bên + cửa sổ soạn riêng (kiểu FA2sp) ----
+  let selId = null, win = null;
+  const curTrg = () => sc().triggers.find((t) => t.id === selId) ?? null;
+  const trgLabel = (t) => (t.enabled ? '' : '⏸ ') + t.name;
+
   function renderTriggers() {
     const box = $('trg-list'); box.textContent = '';
     const dl = $('sc-teams'); dl.textContent = '';
     for (const t of teamLabels()) dl.appendChild(mk('option', { value: t }));
     const s = sc();
     for (const t of s.triggers) {
-      const rr = () => renderTriggers();
-      const head = mk('summary', {}, [mk('span', { textContent: (t.enabled ? '' : '⏸ ') + t.name })]);
-      const body = mk('div', { className: 'sc-body' }, [
-        mk('div', { className: 'btnrow' }, [
-          txt(t.name, (v) => { t.name = v || t.id; changed(); head.firstChild.textContent = (t.enabled ? '' : '⏸ ') + t.name; }, 'tên trigger', 150),
-          mk('button', { textContent: '✕', title: 'Xoá trigger', onclick: () => { s.triggers.splice(s.triggers.indexOf(t), 1); changed(); renderTriggers(); } }),
-        ]),
-        mk('div', { className: 'sc-flags' }, [
-          mk('label', { className: 'check', title: 'Tắt: trigger không chạy cho tới khi trigger khác bật nó.' }, [Object.assign(mk('input', { type: 'checkbox', checked: t.enabled }), { onchange: (e) => { t.enabled = e.target.checked; changed(); rr(); } }), document.createTextNode(' Bật sẵn')]),
-          mk('label', { className: 'check', title: 'Bật: chạy đúng một lần. Tắt: chạy lặp lại.' }, [Object.assign(mk('input', { type: 'checkbox', checked: t.once }), { onchange: (e) => { t.once = e.target.checked; changed(); rr(); } }), document.createTextNode(' Chạy một lần')]),
-          ...(t.once ? [] : [mk('label', { className: 'check', title: 'Khoảng cách tối thiểu giữa hai lần chạy (giây).' }, [document.createTextNode('mỗi '), numIn(t.repeat, (v) => { t.repeat = v; changed(); }, 0, 86400, 56), document.createTextNode(' giây')])]),
-        ]),
-        mk('div', { className: 'btnrow' }, DIFFICULTIES.map((n, k) => {
-          const c = mk('input', { type: 'checkbox', checked: t.diff[k] });
-          c.addEventListener('change', () => { t.diff[k] = c.checked; changed(); });
-          return mk('label', { className: 'check', title: `Trigger có chạy ở độ khó ${n} không.` }, [c, document.createTextNode(' ' + n)]);
-        })),
-        mk('h5', { textContent: 'Điều kiện' }),
-        mk('label', { className: 'check', title: 'Tất cả: mọi điều kiện đều đúng. Một trong: chỉ cần một điều kiện đúng.' }, [
-          sel([['all', 'Khi TẤT CẢ đúng'], ['any', 'Khi MỘT TRONG đúng']], t.any ? 'any' : 'all', (v) => { t.any = v === 'any'; changed(); })]),
-        ...t.conditions.map((c, i) => itemRow(c, COND_TYPES, t.conditions, i, rr)),
-        mk('button', { className: 'wide', textContent: '+ Điều kiện', onclick: () => { t.conditions.push({ type: 'timer', seconds: 60 }); changed(); rr(); } }),
-        ...(t.conditions.length ? [] : [mk('p', { className: 'empty', textContent: 'Không có điều kiện: trigger chạy ngay khi ván bắt đầu.' })]),
-        mk('h5', { textContent: 'Hành động' }),
-        ...t.actions.map((a, i) => itemRow(a, ACT_TYPES, t.actions, i, rr)),
-        mk('button', { className: 'wide', textContent: '+ Hành động', onclick: () => { t.actions.push({ type: 'message', text: '' }); changed(); rr(); } }),
-      ]);
-      const det = mk('details', { className: 'sc-trg' }, [head, body]);
-      det.open = !!t._open;
-      det.addEventListener('toggle', () => { t._open = det.open; });
-      box.appendChild(det);
+      box.appendChild(mk('button', { className: 'trg-chip' + (t.id === selId && win ? ' sel' : ''), textContent: trgLabel(t), title: 'Mở trong cửa sổ soạn Trigger', onclick: () => openTrigWin(t.id) }));
     }
     if (!s.triggers.length) box.appendChild(mk('p', { className: 'empty', textContent: 'Chưa có trigger nào.' }));
+    renderTrigWin();
+  }
+
+  function openTrigWin(id) {
+    if (id) selId = id;
+    if (!curTrg()) selId = sc().triggers[0]?.id ?? null;
+    if (!win) {
+      win = mk('div', { className: 'trg-win' });
+      document.body.appendChild(win);
+      const w = Math.min(window.innerWidth - 40, 1100), h = Math.min(window.innerHeight - 90, 640);
+      Object.assign(win.style, { width: w + 'px', height: h + 'px', left: Math.max(10, (window.innerWidth - w) / 2) + 'px', top: '50px' });
+    }
+    win.hidden = false;
+    renderTriggers();
+  }
+  function closeTrigWin() { if (win) { win.remove(); win = null; renderTriggers(); } }
+
+  function renderTrigWin() {
+    if (!win) return;
+    const s = sc();
+    if (!curTrg() && s.triggers.length) selId = s.triggers[0].id;
+    const t = curTrg();
+    const keep = [...win.querySelectorAll('.trg-scroll')].map((e) => e.scrollTop);
+    win.textContent = '';
+    const rr = () => renderTriggers();
+    const bar = mk('div', { className: 'trg-bar' }, [mk('b', { textContent: 'Trình soạn Trigger' }), mk('small', { textContent: `${s.triggers.length} trigger`, style: 'margin-left:8px;color:#8a93a1' }), mk('span', { style: 'flex:1' }),
+      mk('button', { textContent: '✕', title: 'Đóng cửa sổ (dữ liệu đã tự lưu vào map)', onclick: closeTrigWin })]);
+    let dx = 0, dy = 0, drag = false;
+    bar.addEventListener('pointerdown', (e) => { if (e.target.tagName === 'BUTTON') return; drag = true; dx = e.clientX - win.offsetLeft; dy = e.clientY - win.offsetTop; bar.setPointerCapture(e.pointerId); });
+    bar.addEventListener('pointermove', (e) => { if (drag) { win.style.left = Math.max(0, e.clientX - dx) + 'px'; win.style.top = Math.max(0, e.clientY - dy) + 'px'; } });
+    bar.addEventListener('pointerup', () => { drag = false; });
+
+    // cột trái: danh sách
+    const list = mk('div', { className: 'trg-scroll trg-listcol' });
+    s.triggers.forEach((x) => {
+      const en = mk('input', { type: 'checkbox', checked: x.enabled, title: 'Bật sẵn' });
+      en.addEventListener('click', (e) => e.stopPropagation());
+      en.addEventListener('change', () => { x.enabled = en.checked; changed(); rr(); });
+      list.appendChild(mk('div', { className: 'trg-row' + (x === t ? ' sel' : ''), onclick: () => { selId = x.id; rr(); } }, [en, mk('span', { textContent: x.name, className: x.enabled ? '' : 'off' }),
+        mk('small', { textContent: `${x.conditions.length}đk · ${x.actions.length}hđ` })]));
+    });
+    const mv = (d) => { if (!t) return; const i = s.triggers.indexOf(t), j = i + d; if (j < 0 || j >= s.triggers.length) return; [s.triggers[i], s.triggers[j]] = [s.triggers[j], s.triggers[i]]; changed(); rr(); };
+    const tools = mk('div', { className: 'trg-tools' }, [
+      mk('button', { textContent: '+ Mới', onclick: () => { const id = nextId('t', s.triggers); s.triggers.push({ id, name: 'Trigger ' + id.slice(1), enabled: true, once: true, repeat: 0, any: false, diff: [true, true, true], conditions: [{ type: 'timer', seconds: 60 }], actions: [{ type: 'message', text: '' }] }); selId = id; changed(); warn(); rr(); } }),
+      mk('button', { textContent: 'Nhân bản', title: 'Sao chép trigger đang chọn', onclick: () => { if (!t) return; const c = JSON.parse(JSON.stringify(t)); c.id = nextId('t', s.triggers); c.name = t.name + ' (bản sao)'; s.triggers.splice(s.triggers.indexOf(t) + 1, 0, c); selId = c.id; changed(); rr(); } }),
+      mk('button', { textContent: '↑', title: 'Đưa lên', onclick: () => mv(-1) }), mk('button', { textContent: '↓', title: 'Đưa xuống', onclick: () => mv(1) }),
+      mk('button', { textContent: 'Xoá', title: 'Xoá trigger đang chọn', onclick: () => { if (!t) return; const i = s.triggers.indexOf(t); s.triggers.splice(i, 1); selId = s.triggers[Math.min(i, s.triggers.length - 1)]?.id ?? null; changed(); warn(); rr(); } }),
+    ]);
+    const left = mk('div', { className: 'trg-left' }, [tools, list]);
+
+    // cột phải: thuộc tính + điều kiện | hành động
+    let right;
+    if (!t) right = mk('div', { className: 'trg-right' }, [mk('p', { className: 'empty', textContent: 'Chưa chọn trigger. Bấm "+ Mới" để thêm.' })]);
+    else {
+      const flags = mk('div', { className: 'sc-flags' }, [
+        txt(t.name, (v) => { t.name = v || t.id; changed(); rr(); }, 'tên trigger', 240),
+        mk('label', { className: 'check', title: 'Tắt: trigger không chạy cho tới khi trigger khác bật nó.' }, [Object.assign(mk('input', { type: 'checkbox', checked: t.enabled }), { onchange: (e) => { t.enabled = e.target.checked; changed(); rr(); } }), document.createTextNode(' Bật sẵn')]),
+        mk('label', { className: 'check', title: 'Bật: chạy đúng một lần. Tắt: chạy lặp lại.' }, [Object.assign(mk('input', { type: 'checkbox', checked: t.once }), { onchange: (e) => { t.once = e.target.checked; changed(); rr(); } }), document.createTextNode(' Chạy một lần')]),
+        ...(t.once ? [] : [mk('label', { className: 'check', title: 'Khoảng cách tối thiểu giữa hai lần chạy (giây).' }, [document.createTextNode('mỗi '), numIn(t.repeat, (v) => { t.repeat = v; changed(); }, 0, 86400, 56), document.createTextNode(' giây')])]),
+        ...DIFFICULTIES.map((n, k) => { const c = mk('input', { type: 'checkbox', checked: t.diff[k] }); c.addEventListener('change', () => { t.diff[k] = c.checked; changed(); }); return mk('label', { className: 'check', title: `Chạy ở độ khó ${n}` }, [c, document.createTextNode(' ' + n)]); }),
+      ]);
+      const cond = mk('div', { className: 'trg-col' }, [
+        mk('div', { className: 'trg-colhead' }, [mk('b', { textContent: 'Điều kiện' }), sel([['all', 'TẤT CẢ đúng'], ['any', 'MỘT TRONG đúng']], t.any ? 'any' : 'all', (v) => { t.any = v === 'any'; changed(); }, 'Cách kết hợp các điều kiện')]),
+        mk('div', { className: 'trg-scroll trg-items' }, [
+          ...t.conditions.map((c, i) => itemRow(c, COND_TYPES, t.conditions, i, rr)),
+          ...(t.conditions.length ? [] : [mk('p', { className: 'empty', textContent: 'Không có điều kiện: trigger chạy ngay khi ván bắt đầu.' })])]),
+        mk('button', { className: 'wide', textContent: '+ Điều kiện', onclick: () => { t.conditions.push({ type: 'timer', seconds: 60 }); changed(); rr(); } }),
+      ]);
+      const act = mk('div', { className: 'trg-col' }, [
+        mk('div', { className: 'trg-colhead' }, [mk('b', { textContent: 'Hành động' })]),
+        mk('div', { className: 'trg-scroll trg-items' }, t.actions.map((a, i) => itemRow(a, ACT_TYPES, t.actions, i, rr))),
+        mk('button', { className: 'wide', textContent: '+ Hành động', onclick: () => { t.actions.push({ type: 'message', text: '' }); changed(); rr(); } }),
+      ]);
+      right = mk('div', { className: 'trg-right' }, [flags, mk('div', { className: 'trg-cols' }, [cond, act])]);
+    }
+    win.append(bar, mk('div', { className: 'trg-body' }, [left, right]));
+    win.querySelectorAll('.trg-scroll').forEach((e, i) => { if (keep[i] != null) e.scrollTop = keep[i]; });
   }
 
   function warn() {
@@ -195,9 +247,10 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
 
   $('sc-diff').addEventListener('change', () => { sc().difficulty = Number($('sc-diff').value); changed(); });
   $('tf-add').addEventListener('click', () => { const s = sc(); const id = nextId('tf', s.taskforces); s.taskforces.push({ id, name: 'Đội ' + id.slice(2), units: [{ unit: 'militia', count: 5 }] }); changed(); render(); });
-  $('trg-add').addEventListener('click', () => { const s = sc(); const id = nextId('t', s.triggers); s.triggers.push({ id, name: 'Trigger ' + id.slice(1), enabled: true, once: true, repeat: 0, any: false, diff: [true, true, true], conditions: [{ type: 'timer', seconds: 60 }], actions: [{ type: 'message', text: '' }], _open: true }); changed(); renderTriggers(); warn(); });
+  $('trg-add').addEventListener('click', () => { const s = sc(); const id = nextId('t', s.triggers); s.triggers.push({ id, name: 'Trigger ' + id.slice(1), enabled: true, once: true, repeat: 0, any: false, diff: [true, true, true], conditions: [{ type: 'timer', seconds: 60 }], actions: [{ type: 'message', text: '' }] }); changed(); openTrigWin(id); warn(); });
+  $('trg-open').addEventListener('click', () => openTrigWin());
   $('sc-diff').textContent = '';
   DIFFICULTIES.forEach((n, i) => $('sc-diff').add(new Option(n, String(i))));
 
-  return { render, warn, nextId };
+  return { render, warn, nextId, closeTrigWin };
 }

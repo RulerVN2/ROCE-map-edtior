@@ -3,7 +3,7 @@ import { DECO, heightAt, materialAt, grassColorAt, MATERIALS, MAT, WATER_COLOR, 
 import { PROP_BY_KEY, propBlocks } from '../../core/props.js';
 import { modelFor, modelTextures, buildFaces, armorOf, armorLayers, heldOf, horseArmorLayer } from '../../core/mobmodels.js';
 import { blockColor, parseState, shapeOf, SHAPE } from '../../core/structure.js';
-import { mobStyle, mobGroups, mobGroupKey } from '../../core/mobs.js';
+import { mobStyle, mobGroups, mobGroupKey, mobGlyph } from '../../core/mobs.js';
 import { BUILDING_PREFIX, footprintRect, rotOf } from '../../core/scenario.js';
 
 const ZOOMS = [0.5, 1, 2, 3, 4, 6, 8, 12, 16, 24];
@@ -667,7 +667,7 @@ export class IsoView {
   drawMobs() {
     const t = this.terrain, n = t.size, s = this.scale;
     this.mobScreen = [];
-    const r = Math.max(3.5, Math.min(11, s * 0.85));
+    const r = Math.max(7, Math.min(14, s * 1.1));
     const one = (m, i, style, alpha, key) => {
       const gx = Math.floor(m.x), gz = Math.floor(m.z);
       if (gx < 0 || gz < 0 || gx >= n || gz >= n) return;
@@ -676,7 +676,7 @@ export class IsoView {
       if (px < -20 || py < -20 || px > this.W + 20 || py > this.H + 20) return;
       const hot = key !== null && key === this.hiGroup;
       if (typeof m.id === 'string' && m.id.startsWith(BUILDING_PREFIX)) { this.drawBuildingMark(m, h, style, alpha, hot); if (i >= 0) this.mobScreen.push({ px, py, r, m, i, key }); return; }
-      if (!(this._modeled && this._modeled.has(m)) || hot) this.drawMarker(px, py, r, m.yaw, style, alpha, hot);
+      if (!(this._modeled && this._modeled.has(m)) || hot) this.drawMarker(px, py, r, m.yaw, style, alpha, hot, mobGlyph(m.id));
       if (i >= 0) this.mobScreen.push({ px, py, r, m, i, key });
     };
     this.mobs.forEach((m, i) => one(m, i, mobStyle(m), 1, mobGroupKey(m, i)));
@@ -695,11 +695,14 @@ export class IsoView {
     c.strokeStyle = hot ? '#ffd640' : '#fff'; c.lineWidth = 1.5; c.stroke();
     const q = this.project(m.x, h + 1, m.z), a = (m.yaw * Math.PI) / 180, fx = -Math.sin(a), fz = Math.cos(a), len = Math.max(6, this.scale * 2.5);
     c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.moveTo(q.px, q.py); c.lineTo(q.px + (fx - fz) * len, q.py + (fx + fz) * len * 0.5); c.stroke();
-    c.beginPath(); c.arc(q.px, q.py, 3, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill();
+    c.globalAlpha = 1;
+    const gl = mobGlyph(m.id);
+    c.fillStyle = 'rgba(18,20,25,.8)'; c.beginPath(); c.arc(q.px, q.py, Math.max(9, this.scale * 1.8), 0, Math.PI * 2); c.fill();
+    this.drawGlyph(gl, q.px, q.py, Math.max(14, this.scale * 2.6));
     c.globalAlpha = 1;
   }
   /** Một biểu tượng mob: hình theo loại, viền trắng, vạch chỉ hướng mặt (yaw Minecraft: 0 = nam, 90 = tây). */
-  drawMarker(px, py, r, yaw, style, alpha, hot) {
+  drawMarker(px, py, r, yaw, style, alpha, hot, glyph) {
     const c = this.ctx, a = (yaw * Math.PI) / 180;
     const fx = -Math.sin(a), fz = Math.cos(a), len = r * 1.9;
     c.globalAlpha = alpha; c.lineJoin = 'round';
@@ -709,7 +712,9 @@ export class IsoView {
     c.strokeStyle = '#fff'; c.lineWidth = Math.max(1, r * 0.22);
     c.beginPath(); c.moveTo(px, py); c.lineTo(px + (fx - fz) * len, py + (fx + fz) * len * 0.5); c.stroke();
     c.beginPath();
-    switch (style.shape) {
+    const badge = !!glyph && r >= 6;
+    if (badge) c.arc(px, py, r * 1.35, 0, Math.PI * 2);
+    else switch (style.shape) {
       case 'triangle': c.moveTo(px, py - r * 1.15); c.lineTo(px + r * 1.1, py + r * 0.85); c.lineTo(px - r * 1.1, py + r * 0.85); c.closePath(); break;
       case 'diamond': c.moveTo(px, py - r * 1.2); c.lineTo(px + r * 1.2, py); c.lineTo(px, py + r * 1.2); c.lineTo(px - r * 1.2, py); c.closePath(); break;
       case 'shield': c.moveTo(px - r, py - r); c.lineTo(px + r, py - r); c.lineTo(px + r, py + r * 0.2); c.lineTo(px, py + r * 1.25); c.lineTo(px - r, py + r * 0.2); c.closePath(); break;
@@ -721,7 +726,15 @@ export class IsoView {
     c.fillStyle = style.color; c.fill();
     c.strokeStyle = 'rgba(0,0,0,.9)'; c.lineWidth = Math.max(1.5, r * 0.3); c.stroke();
     c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 1; c.stroke();
+    if (badge) this.drawGlyph(glyph, px, py, r * 1.55);
     c.globalAlpha = 1;
+  }
+  drawGlyph(g, px, py, size) {
+    const c = this.ctx;
+    c.font = `${Math.round(size)}px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji","Segoe UI",sans-serif`;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,.55)'; if (g.length === 1 && /[A-Z0-9?]/.test(g)) { c.fillStyle = '#fff'; c.strokeText(g, px, py + 1); }
+    c.fillStyle = '#fff'; c.fillText(g, px, py + 1);
   }
   /** Nhãn tên công trình và nhóm mob. Nhãn nào đè lên nhãn đã vẽ thì bỏ qua (trừ nhãn đang được chỉ vào). */
   drawLabels() {
