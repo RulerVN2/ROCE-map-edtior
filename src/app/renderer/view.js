@@ -1,10 +1,10 @@
 // Khung nhìn nghiêng kiểu AoE2 (hình thoi 2:1), vẽ bằng phần mềm lên ImageData.
 import { DECO, heightAt, materialAt, grassColorAt, MATERIALS, MAT, WATER_COLOR, NO_WATER, NO_CAVE, BLOCK_PALETTE } from '../../core/terrain.js';
 import { PROP_BY_KEY, propBlocks } from '../../core/props.js';
-import { modelFor, modelTextures, buildFaces, armorOf, armorLayers, heldOf, horseArmorLayer } from '../../core/mobmodels.js';
+import { modelFor, modelTextures, buildFaces, armorOf, armorLayers, heldOf, horseArmorLayer, aoeGear } from '../../core/mobmodels.js';
 import { blockColor, parseState, shapeOf, SHAPE } from '../../core/structure.js';
 import { mobStyle, mobGroups, mobGroupKey, mobGlyph } from '../../core/mobs.js';
-import { BUILDING_PREFIX, footprintRect, rotOf } from '../../core/scenario.js';
+import { BUILDING_PREFIX, COLORS, footprintRect, rotOf } from '../../core/scenario.js';
 
 const ZOOMS = [0.5, 1, 2, 3, 4, 6, 8, 12, 16, 24];
 const REF_H = 64;
@@ -497,21 +497,23 @@ export class IsoView {
       const feetY = topAt(t, t.water, this.structTop, n, gx, gz) + (m.dy || 0);
       const sx0 = ox + (m.x - m.z) * s, sy0 = oy + (m.x + m.z) * 0.5 * s - feetY * s;
       if (sx0 < -60 * s / 6 || sx0 > W + 60 * s / 6 || sy0 < -4 * s || sy0 > H + 60 * s / 6) continue;
-      const am = mod.humanoid ? armorOf(m.snbt) : null;
+      const gear = mod.equip ? aoeGear(mod, COLORS[Math.max(0, (m.slot | 0) - 1)][2]) : null;      // lính của mod: giáp, vũ khí, khiên theo đúng UnitType, nhuộm màu ô
+      const am = gear ? gear.armor : mod.humanoid ? armorOf(m.snbt) : null;
       let layers = am ? armorLayers(mod, am) : [];
       if (layers.length) {
         const need = layers.map((l) => l.tex).filter((q) => tx.entity.get(q) === undefined);
         if (need.length) this.needEntity?.(need);
         layers = layers.filter((l) => tx.entity.get(l.tex));
       }
-      let held = mod.humanoid || mod.hand ? heldOf(m.snbt) : null;
-      if (held === 'crossbow') held = 'crossbow'; 
-      if (held) { const q = `item/${held === 'crossbow' ? 'crossbow_standby' : held}`, e = tx.entity.get(q); if (e === undefined) this.needEntity?.([q]); if (!e) held = null; }
+      let held = gear ? gear.held : mod.humanoid || mod.hand ? heldOf(m.snbt) : null;
+      if (held) { const q = typeof held === 'object' ? held.tex : `item/${held === 'crossbow' ? 'crossbow_standby' : held}`, e = tx.entity.get(q); if (e === undefined) this.needEntity?.([q]); if (!e) held = null; }
+      let shield = gear?.shield ?? null;
+      if (shield) { const e = tx.entity.get(shield.tex); if (e === undefined) this.needEntity?.([shield.tex]); if (!e) shield = null; }
       const ha = horseArmorLayer(mod, m.snbt);
       if (ha) { const e = tx.entity.get(ha.tex); if (e === undefined) this.needEntity?.([ha.tex]); if (e) layers = [...layers, ha]; }
-      const ck = layers.map((l) => l.tex).join('|') + (held ? '#' + held : '');
+      const ck = layers.map((l) => l.tex).join('|') + (held ? '#' + (typeof held === 'object' ? held.tex : held) : '') + (shield ? '$' + shield.tex : '');
       let byMob = this._facesCache.get(mod); if (!byMob) { byMob = new Map(); this._facesCache.set(mod, byMob); }
-      let fl = byMob.get(ck); if (!fl) { fl = buildFaces(mod, layers, held); byMob.set(ck, fl); }
+      let fl = byMob.get(ck); if (!fl) { fl = buildFaces(mod, layers, held, shield); byMob.set(ck, fl); }
       const a = ((m.yaw + (mod.yaw0 ?? 0)) * Math.PI) / 180, c = Math.cos(a), sn = Math.sin(a);
       const K = mod.scale ?? 1;   // v: mô hình lính của mod phóng to cho dễ nhìn
       const pt = (v) => { const x = K * v[0] / 16, y = K * (24 - v[1]) / 16, z = -K * v[2] / 16; return [m.x + c * x - sn * z, feetY + y, m.z + sn * x + c * z]; };

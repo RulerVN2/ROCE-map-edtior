@@ -37,18 +37,44 @@ export class Textures {
     const todo = paths.filter((p) => !this.entityAsked.has(p));
     if (!todo.length) return false;
     todo.forEach((p) => this.entityAsked.add(p));
-    const r = await window.mapBuilder.getEntityTextures(todo);
+    // Đường dẫn "x@rrggbb": ảnh x nhuộm màu đó, rồi chồng ảnh x_overlay giữ nguyên (giáp da và khiên của mod).
+    const tinted = (p) => /^(.+)@([0-9a-f]{6})$/.exec(p);
+    const want = new Set();
+    for (const p of todo) { const m = tinted(p); if (m) { want.add(m[1]); want.add(m[1] + '_overlay'); } else want.add(p); }
+    const r = await window.mapBuilder.getEntityTextures([...want]);
     if (r.none || r.error) { todo.forEach((p) => this.entityAsked.delete(p)); return false; }
+    const raw = async (bytes) => {
+      if (!bytes) return null;
+      try {
+        const bm = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+        const cv = new OffscreenCanvas(bm.width, bm.height), g = cv.getContext('2d', { willReadFrequently: true });
+        g.drawImage(bm, 0, 0);
+        return { w: bm.width, h: bm.height, d: g.getImageData(0, 0, bm.width, bm.height).data };
+      } catch { return null; }
+    };
     for (const p of todo) {
       let rec = null;
+      const m = tinted(p);
       try {
-        if (r.png[p]) {
-          const bm = await createImageBitmap(new Blob([r.png[p]], { type: 'image/png' }));
-          const cv = new OffscreenCanvas(bm.width, bm.height), g = cv.getContext('2d', { willReadFrequently: true });
-          g.drawImage(bm, 0, 0);
-          const d = g.getImageData(0, 0, bm.width, bm.height).data, px = new Uint32Array(bm.width * bm.height);
-          for (let i = 0; i < px.length; i++) px[i] = d[i * 4 + 3] < 128 ? 0 : rgba(d[i * 4], d[i * 4 + 1], d[i * 4 + 2]);
-          rec = { w: bm.width, h: bm.height, px };
+        if (m) {
+          const base = await raw(r.png[m[1]]), ov = await raw(r.png[m[1] + '_overlay']);
+          const ref = base ?? ov;
+          if (ref) {
+            const tr = parseInt(m[2].slice(0, 2), 16) / 255, tg = parseInt(m[2].slice(2, 4), 16) / 255, tb = parseInt(m[2].slice(4, 6), 16) / 255;
+            const px = new Uint32Array(ref.w * ref.h);
+            for (let i = 0; i < px.length; i++) {
+              if (base && base.d[i * 4 + 3] >= 128) px[i] = rgba(base.d[i * 4] * tr, base.d[i * 4 + 1] * tg, base.d[i * 4 + 2] * tb);
+              if (ov && ov.w === ref.w && ov.d[i * 4 + 3] >= 128) px[i] = rgba(ov.d[i * 4], ov.d[i * 4 + 1], ov.d[i * 4 + 2]);
+            }
+            rec = { w: ref.w, h: ref.h, px };
+          }
+        } else {
+          const im = await raw(r.png[p]);
+          if (im) {
+            const px = new Uint32Array(im.w * im.h);
+            for (let i = 0; i < px.length; i++) px[i] = im.d[i * 4 + 3] < 128 ? 0 : rgba(im.d[i * 4], im.d[i * 4 + 1], im.d[i * 4 + 2]);
+            rec = { w: im.w, h: im.h, px };
+          }
         }
       } catch { rec = null; }
       this.entity.set(p, rec);

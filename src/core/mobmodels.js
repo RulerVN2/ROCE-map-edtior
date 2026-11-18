@@ -197,10 +197,20 @@ export function modelFor(id) {
 /** Lính và dân của mod dùng mô hình người (như zombie nhưng tay thả xuống) với skin riêng, nằm trong assets/aoe2 của chương trình. */
 const AOE_UNIT_SKINS = new Set(["arbalester", "archer", "ashigaru", "axe_raider", "bearded_axeman", "berserk", "camel_rider", "carnyx_player", "cataphract", "cavalier", "cavalry_archer", "champion", "chu_ko_nu", "crossbowman", "elite_berserk", "elite_cataphract", "elite_chu_ko_nu", "elite_fire_lancer", "elite_huskarl", "elite_longbowman", "elite_mangudai", "elite_ninja", "elite_samurai", "elite_skirmisher", "elite_steppe_lancer", "elite_throwing_axeman", "elite_varangian_guard", "elite_watchman", "elite_woad_raider", "fire_lancer", "great_axeman", "halberdier", "hand_cannoneer", "heavy_camel_rider", "heavy_cavalry_archer", "heavy_mounted_crossbowman", "highlander", "hird_bowman", "hirdman", "huo_hu_gunner", "huskarl", "hussar", "knight", "light_cavalry", "long_swordsman", "longbowman", "man_at_arms", "mangudai", "marksman_of_the_hird", "militia", "monk", "mounted_crossbowman", "ninja", "norse_bowman", "oriflamme_bearer", "paladin", "pikeman", "raider", "royal_saiones", "samurai", "scara", "scout_cavalry", "skirmisher", "smoke_bomber", "spearman", "steppe_lancer", "taiko_drummer", "throwing_axeman", "two_handed_swordsman", "varangian_guard", "war_engineer", "watchman", "woad_raider"]);
 const AOE_CACHE = new Map();
+/** Trang bị của từng đơn vị mod: [vũ khí tay phải, khiên tay trái | null, bộ giáp] (khớp UnitType của mod). */
+const AOE_EQUIP = {"arbalester":["arbalester_crossbow",null,"arbalester"],"archer":["archer_bow",null,"archer"],"ashigaru":["ashigaru_musket",null,"ashigaru"],"axe_raider":["axe_raider_axe","axe_raider_shield","axe_raider"],"bearded_axeman":["bearded_axeman_axe","bearded_axeman_shield","bearded_axeman"],"berserk":["berserk_axe","berserk_shield","berserk"],"camel_rider":["camel_rider_scimitar","camel_rider_shield","camel_rider"],"carnyx_player":["carnyx",null,"carnyx_player"],"cataphract":["cataphract_sword","cataphract_shield","cataphract"],"cavalier":["cavalier_sword","cavalier_shield","cavalier"],"cavalry_archer":["cavalry_archer_bow",null,"cavalry_archer"],"champion":["champion_sword",null,"champion"],"chu_ko_nu":["chu_ko_nu_crossbow",null,"chu_ko_nu"],"crossbowman":["crossbowman_crossbow",null,"crossbowman"],"elite_berserk":["elite_berserk_axe","elite_berserk_shield","elite_berserk"],"elite_cataphract":["elite_cataphract_sword","elite_cataphract_shield","elite_cataphract"],"elite_chu_ko_nu":["elite_chu_ko_nu_crossbow",null,"elite_chu_ko_nu"],"elite_fire_lancer":["elite_fire_lancer_spear",null,"elite_fire_lancer"],"elite_huskarl":["elite_huskarl_sword","elite_huskarl_shield","elite_huskarl"],"elite_longbowman":["elite_longbowman_bow",null,"elite_longbowman"],"elite_mangudai":["elite_mangudai_bow",null,"elite_mangudai"],"elite_ninja":["elite_ninja_sword",null,"elite_ninja"],"elite_samurai":["elite_samurai_katana",null,"elite_samurai"],"elite_skirmisher":["elite_skirmisher_javelin","elite_skirmisher_shield","elite_skirmisher"],"elite_steppe_lancer":["elite_steppe_lancer_lance",null,"elite_steppe_lancer"],"elite_throwing_axeman":["elite_throwing_axeman_axe",null,"elite_throwing_axeman"],"elite_varangian_guard":["elite_varangian_guard_axe",null,"elite_varangian_guard"],"elite_watchman":["elite_watchman_bill","elite_watchman_shield","elite_watchman"],"elite_woad_raider":["elite_woad_raider_axe","elite_woad_raider_shield","elite_woad_raider"],"fire_lancer":["fire_lancer_spear",null,"fire_lancer"],"great_axeman":["great_axeman_axe","great_axeman_shield","great_axeman"],"halberdier":["halberdier_halberd",null,"halberdier"],"hand_cannoneer":["hand_cannoneer_cannon",null,"hand_cannoneer"],"heavy_camel_rider":["heavy_camel_rider_scimitar","heavy_camel_rider_shield","heavy_camel_rider"],"heavy_cavalry_archer":["heavy_cavalry_archer_bow",null,"heavy_cavalry_archer"],"heavy_mounted_crossbowman":["heavy_mounted_crossbowman_crossbow",null,"mounted_crossbowman"],"highlander":["highlander_sword","highlander_shield","highlander"],"hird_bowman":["hird_bowman_bow","hird_bowman_shield","hird_bowman"],"hirdman":["hirdman_axe","hirdman_shield","hirdman"],"huo_hu_gunner":["huo_hu_gun",null,"huo_hu_gunner"],"huskarl":["huskarl_sword","huskarl_shield","huskarl"],"hussar":["hussar_sword","hussar_shield","hussar"],"knight":["knight_sword","knight_shield","knight"],"light_cavalry":["light_cavalry_sword","light_cavalry_shield","light_cavalry"],"long_swordsman":["long_swordsman_sword","long_swordsman_shield","long_swordsman"],"longbowman":["longbowman_bow",null,"longbowman"],"man_at_arms":["man_at_arms_sword","man_at_arms_shield","man_at_arms"],"mangudai":["mangudai_bow",null,"mangudai"],"marksman_of_the_hird":["marksman_of_the_hird_bow","marksman_of_the_hird_shield","marksman_of_the_hird"],"militia":["militia_mace","militia_shield","militia"],"monk":["monk_staff",null,"monk"],"mounted_crossbowman":["mounted_crossbowman_crossbow",null,"mounted_crossbowman"],"ninja":["ninja_sword",null,"ninja"],"norse_bowman":["norse_bowman_bow","norse_bowman_shield","norse_bowman"],"oriflamme_bearer":["oriflamme_banner",null,"oriflamme_bearer"],"paladin":["paladin_sword","paladin_shield","paladin"],"pikeman":["pikeman_pike",null,"pikeman"],"raider":["raider_axe","raider_shield","raider"],"royal_saiones":["royal_saiones_lance","royal_saiones_shield","royal_saiones"],"samurai":["samurai_katana",null,"samurai"],"scara":["scara_lance","scara_shield","scara"],"scout_cavalry":["scout_cavalry_lance",null,"scout_cavalry"],"skirmisher":["skirmisher_javelin","skirmisher_shield","skirmisher"],"smoke_bomber":["smoke_pot",null,"smoke_bomber"],"spearman":["spearman_spear",null,"spearman"],"steppe_lancer":["steppe_lancer_lance",null,"steppe_lancer"],"taiko_drummer":["taiko_bachi",null,"taiko_drummer"],"throwing_axeman":["throwing_axeman_axe",null,"throwing_axeman"],"two_handed_swordsman":["two_handed_swordsman_sword",null,"two_handed_swordsman"],"varangian_guard":["varangian_guard_axe",null,"varangian_guard"],"war_engineer":["war_engineer_mallet",null,"war_engineer"],"watchman":["watchman_bill","watchman_shield","watchman"],"woad_raider":["woad_raider_axe","woad_raider_shield","woad_raider"]};
+/** Màu nhuộm giáp / khiên của ô người chơi: hậu tố '@rrggbb' trên đường dẫn texture (Textures ghép lớp nền nhuộm + lớp overlay giữ nguyên). */
+export function aoeGear(model, hex) {
+  const q = model.equip; if (!q) return null;
+  const tint = hex ? '@' + hex.replace('#', '').toLowerCase() : '';
+  const a = `aoe2/armor/${q[2]}`;
+  const longer = /spear|pike|halberd|lance/.test(q[0]);
+  return { armor: { aoe: a + tint }, held: q[0] ? { tex: `aoe2/item/${q[0]}`, size: longer ? 30 : 17 } : null, shield: q[1] ? { tex: `aoe2/item/${q[1]}${tint}` } : null };
+}
 function aoeModel(name) {
   const tex = name === 'villager' ? 'aoe2/villager' : AOE_UNIT_SKINS.has(name) ? 'aoe2/unit/' + name : null;
   if (!tex) return null;
-  if (!AOE_CACHE.has(tex)) AOE_CACHE.set(tex, { tex, parts: H(4, 4, true), humanoid: false, armRx: 0, scale: 1.7 });
+  if (!AOE_CACHE.has(tex)) AOE_CACHE.set(tex, { tex, parts: H(4, 4, true), humanoid: true, armRx: 0, scale: 1.7, equip: AOE_EQUIP[name] ?? null });
   return AOE_CACHE.get(tex);
 }
 /** Các đường dẫn texture entity cần tải cho một mô hình. */
@@ -226,7 +236,7 @@ function partRot(part) {
  * Dựng sẵn các mặt (chỉ các mặt có thể nhìn thấy từ trên: trước, sau, hai bên, trên) của một mô hình, trong toạ độ mô hình đã xoay bộ phận.
  * Mỗi mặt: { o: gốc, U, V: hai cạnh (u chạy theo U, v chạy theo V), n: pháp tuyến ngoài, r: [u, v, rộng, cao] trong ảnh, fur }.
  */
-export function buildFaces(model, armor = [], held = null) {
+export function buildFaces(model, armor = [], held = null, shield = null) {
   const out = [];
   const add = (parts, fur, tex) => {
     const bw = tex ? 64 : model.texW ?? 64;
@@ -249,6 +259,7 @@ export function buildFaces(model, armor = [], held = null) {
   if (model.furParts) add(model.furParts, true);
   for (const a of armor) add(a.parts, false, a.tex);
   if (held && (model.humanoid || model.hand)) out.push(...heldFaces(model, held));
+  if (shield && model.humanoid) out.push(...shieldFaces(shield));
   return out;
 }
 
@@ -279,6 +290,10 @@ export function armorLayers(model, armor) {
     lleg: (g) => ({ p: [1.9, 12, 0], b: box([0, 16], [-2, 0, -2], [4, 12, 4], g) }),
   };
   const out = [];
+  if (armor.aoe) {            // giáp của mod: một bộ cho cả 4 ô trang bị
+    const t1 = `${armor.aoe.replace(/(@[0-9a-f]{6})?$/, '')}_layer_1${armor.aoe.match(/@[0-9a-f]{6}$/)?.[0] ?? ''}`, t2 = t1.replace('_layer_1', '_layer_2');
+    return [{ tex: t1, parts: [part.head(1), part.body(1), part.rarm(1), part.larm(1), part.rleg(1), part.lleg(1)] }, { tex: t2, parts: [part.body(0.5), part.rleg(0.5), part.lleg(0.5)] }];
+  }
   const tex = (mat, n) => `models/armor/${mat}_layer_${n}`;
   if (armor.head) out.push({ tex: tex(armor.head, 1), parts: [part.head(1)] });
   if (armor.chest) out.push({ tex: tex(armor.chest, 1), parts: [part.body(1), part.rarm(1), part.larm(1)] });
@@ -296,12 +311,22 @@ export function heldOf(snbt) {
 function heldFaces(model, item) {
   const rx = model.armRx ?? 0, a = rad(rx), c = Math.cos(a), s = Math.sin(a);
   const hp = rotX([0, 12, 0], c, s);
-  const [cx, cy, cz] = model.hand ?? [-5, 2 + hp[1], hp[2]], S = 12;
-  const tex = `item/${item === 'crossbow' ? 'crossbow_standby' : item}`, r = [0, 0, 16, 16];
-  const top = cy - S * 0.65, back = cz + S * 0.35;
+  const [cx, cy, cz] = model.hand ?? [-5, 2 + hp[1], hp[2]];
+  const aoe = typeof item === 'object';
+  const S = aoe ? item.size : 12;
+  const tex = aoe ? item.tex : `item/${item === 'crossbow' ? 'crossbow_standby' : item}`, r = aoe ? [0, 0, 128, 128] : [0, 0, 16, 16];
+  const top = cy - S * 0.65, back = cz + S * 0.35, bw = aoe ? 128 : 16;
   return [
-    { o: [cx + 0.6, top, back], U: [0, 0, -S], V: [0, S, 0], n: [1, 0, 0], r, tex, bw: 16 },
-    { o: [cx - 0.6, top, back], U: [0, 0, -S], V: [0, S, 0], n: [-1, 0, 0], r, tex, bw: 16 },
+    { o: [cx + 0.6, top, back], U: [0, 0, -S], V: [0, S, 0], n: [1, 0, 0], r, tex, bw },
+    { o: [cx - 0.6, top, back], U: [0, 0, -S], V: [0, S, 0], n: [-1, 0, 0], r, tex, bw },
+  ];
+}
+/** Khiên đeo áp vào mặt ngoài cẳng tay trái. */
+function shieldFaces(shield) {
+  const S = 13, r = [0, 0, 128, 128], tex = shield.tex;
+  return [
+    { o: [8.6, -1, S / 2], U: [0, 0, -S], V: [0, S, 0], n: [1, 0, 0], r, tex, bw: 128 },
+    { o: [7.8, -1, S / 2], U: [0, 0, -S], V: [0, S, 0], n: [-1, 0, 0], r, tex, bw: 128 },
   ];
 }
 
