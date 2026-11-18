@@ -357,7 +357,7 @@ export class IsoView {
     }
     this.voxProps = useTex && !!this.props?.length;
     if (this.voxProps) this.drawPropVoxels();
-    this._modeled = useTex && this.mobs?.length ? this.drawMobModels() : null;
+    this._modeled = useTex && (this.mobs?.length || this.mobGhost) ? this.drawMobModels() : null;
     this.ctx.putImageData(this.image, 0, 0);
     this.drawBorder();
     this.drawZones();
@@ -484,7 +484,9 @@ export class IsoView {
     const done = new Set(), t = this.terrain, n = t.size, s = this.scale, { W, H, px } = this, ox = this._ox, oy = this._oy, tx = this.tx;
     if (!this._facesCache) this._facesCache = new Map();
     const faces = [];
-    for (const m of this.mobs) {
+    this._ghostDrawn = false;
+    const g0 = this.mobGhost, gm = g0 && modelFor(g0.id) ? g0.points.map((p) => ({ x: p.x, z: p.z, yaw: g0.yaw, id: g0.id, snbt: '', dy: 0, _ghost: true })) : [];
+    for (const m of gm.length ? [...this.mobs, ...gm] : this.mobs) {
       const mod = modelFor(m.id); if (!mod) continue;
       const te = tx.entity.get(mod.tex);
       if (te === undefined) { this.needEntity?.(modelTextures(mod)); continue; }
@@ -521,9 +523,9 @@ export class IsoView {
         const o = pt(f.o), U = vec(f.U), V = vec(f.V);
         const ft = f.fur ? fe : f.tex ? tx.entity.get(f.tex) : te;
         if (!ft) continue;
-        faces.push({ tex: ft, bw: f.bw ?? 64, r: f.r, o, U, V, nw, key: o[0] + o[2] + o[1] + (U[0] + U[1] + U[2] + V[0] + V[1] + V[2]) / 2 + (f.tex ? 0.08 : 0) });
+        faces.push({ ghost: !!m._ghost, tex: ft, bw: f.bw ?? 64, r: f.r, o, U, V, nw, key: o[0] + o[2] + o[1] + (U[0] + U[1] + U[2] + V[0] + V[1] + V[2]) / 2 + (f.tex ? 0.08 : 0) });
       }
-      done.add(m);
+      done.add(m); if (m._ghost) this._ghostDrawn = true;
     }
     faces.sort((p, q) => p.key - q.key);
     for (const f of faces) {
@@ -541,7 +543,7 @@ export class IsoView {
           const u = (dx * Vy - dy * Vx) / det, v = (Ux * dy - Uy * dx) / det;
           if (u < 0 || u >= 1 || v < 0 || v >= 1) continue;
           const c0 = tex.px[Math.min(tex.h - 1, Math.floor(rv + v * rh)) * tex.w + Math.min(tex.w - 1, Math.floor(ru + u * rw))];
-          if (c0) px[y * W + x] = mulPx(c0, shade);
+          if (c0) { if (f.ghost) put(px, null, y * W + x, mulPx(c0, shade), -2, true); else px[y * W + x] = mulPx(c0, shade); }
         }
       }
     }
@@ -684,7 +686,7 @@ export class IsoView {
     };
     this.mobs.forEach((m, i) => one(m, i, mobStyle(m), 1, mobGroupKey(m, i)));
     const g = this.mobGhost;
-    if (g) for (const p of g.points) one({ x: p.x, z: p.z, yaw: g.yaw, id: g.id }, -1, g.style, 0.6, null);
+    if (g && !this._ghostDrawn) for (const p of g.points) one({ x: p.x, z: p.z, yaw: g.yaw, id: g.id }, -1, g.style, 0.6, null);
   }
   /** Công trình đặt sẵn: vẽ đúng hình chữ nhật nền (đã xoay) theo màu ô người chơi, có dấu cửa ở cạnh trước. */
   drawBuildingMark(m, h, style, alpha, hot) {

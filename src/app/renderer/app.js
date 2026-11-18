@@ -1138,13 +1138,18 @@ function frame(now) {
       view.ghost = { x0, z0, x1: x0 + w - 1, z1: z0 + l - 1, x: x0, z: z0, y: heightAt(terrain, cell.x, cell.z) + 1 + yOff, map: topMap(state.schem, state.rot, state.flip),
         pad: $('st-pad').value === 'site' ? { margin: padMargin(), y: heightAt(terrain, cell.x, cell.z) } : null };
     }
+    const gb = cell && state.tool === 'mob' && !state.shift && state.mobSel?.id?.startsWith(BUILDING_PREFIX) ? state.mobSel.id.slice(BUILDING_PREFIX.length) : null;
+    if (gb && BUILDING_DATA[gb]) {      // công trình mod sắp đặt: hiện mờ bằng khối thật, đúng hướng và màu ô
+      const rot = rotOf(state.mobYaw), [bx0, bz0, bx1, bz1] = footprintRect(gb, cell.x, cell.z, rot);
+      view.ghost = { x0: bx0, z0: bz0, x1: bx1 - 1, z1: bz1 - 1, x: bx0, z: bz0, y: view.groundY(cell.x, cell.z) + 1, map: buildingMap(gb, rot, Number($('mob-slot').value) || 0), pad: null };
+    }
     view.line = cell && state.tool === 'structure' && state.wall && wallDrawOn() ? { a: state.wall.pts[state.wall.pts.length - 1], b: snapToAxis(state.wall.pts, cell), radius: 1, erase: false } : cell && state.tool === 'cavestair' && state.stairStart ? stairPreview(cell) : cell && state.tool === 'structure' && state.stLine && $('st-line').checked ? { a: state.stLine, b: cell, radius: 1, erase: false } : cell && state.tool === 'road' && state.roadMode === 'line' && state.lineStart ? { a: state.lineStart, b: cell, radius: state.radius, erase: state.shift } : null;
     view.spawn = spawnCell(terrain);
     view.border = terrain.border || state.tool === 'border' ? borderBox(terrain) : null; view.borderEdit = state.tool === 'border';
     view.mobs = terrain.mobs;
     view.props = terrain.props;
     view.propGhost = cell && state.tool === 'prop' && state.propMode === 'place' && !state.shift && state.propSel ? { k: state.propSel, x: cell.x, z: cell.z, sc: 1, s: 1 } : null;
-    view.mobGhost = cell && state.tool === 'mob' && !state.shift && state.mobSel ? { points: mobPoints(cell), yaw: state.mobYaw, id: state.mobSel.id, style: mobStyle({ id: state.mobSel.id, label: state.mobSel.name }) } : null;
+    view.mobGhost = cell && state.tool === 'mob' && !state.shift && state.mobSel && !(gb && BUILDING_DATA[gb]) ? { points: mobPoints(cell), yaw: state.mobYaw, id: state.mobSel.id, style: mobStyle({ id: state.mobSel.id, label: state.mobSel.name }) } : null;
     // Thứ đang nằm dưới con trỏ: làm nổi và hiện tên.
     let tipText = '';
     view.hi = focus?.hi ?? null; view.hiGroup = focus?.group ?? null;
