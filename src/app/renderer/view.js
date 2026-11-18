@@ -357,6 +357,7 @@ export class IsoView {
     this._modeled = useTex && this.mobs?.length ? this.drawMobModels() : null;
     this.ctx.putImageData(this.image, 0, 0);
     this.drawBorder();
+    this.drawZones();
     this.drawGhostPad();
     this.drawProps();
     this.drawMobs();
@@ -633,6 +634,32 @@ export class IsoView {
       const text = `${b.x1 - b.x0} x ${b.z1 - b.z0}`, w = c.measureText(text).width + 14;
       c.fillStyle = 'rgba(20,20,30,0.8)'; c.fillRect(p.px - w / 2, p.py - 10, w, 20);
       c.fillStyle = '#ffd24a'; c.fillText(text, p.px, p.py);
+    }
+    c.restore();
+  }
+  /** Vùng của kịch bản: hình chữ nhật xanh trong suốt bám theo địa hình, có tên ở giữa. */
+  drawZones() {
+    const zs = this.terrain.scenario?.zones; if (!zs?.length) return;
+    const t = this.terrain, n = t.size, c = this.ctx;
+    const hAt = (x, z) => t.heights[Math.min(n - 1, Math.max(0, Math.floor(z))) * n + Math.min(n - 1, Math.max(0, Math.floor(x)))] + 1;
+    const at = (x, z) => this.project(x, hAt(x, z), z);
+    c.save(); c.lineJoin = 'round';
+    for (const z of zs) {
+      const x0 = z.x0, z0 = z.z0, x1 = z.x1 + 1, z1 = z.z1 + 1;
+      const path = [[x0, z0], [x1, z0], [x1, z1], [x0, z1], [x0, z0]];
+      c.beginPath();
+      path.forEach(([x, zz], i) => {
+        if (i === 0) { const p = at(x, zz); c.moveTo(p.px, p.py); return; }
+        const [ax, az] = path[i - 1], k = Math.max(1, Math.ceil(Math.max(Math.abs(x - ax), Math.abs(zz - az)) / 4));
+        for (let j = 1; j <= k; j++) { const p = at(ax + (x - ax) * j / k, az + (zz - az) * j / k); c.lineTo(p.px, p.py); }
+      });
+      c.fillStyle = 'rgba(89,168,255,0.16)'; c.fill();
+      c.lineWidth = 2; c.strokeStyle = '#59a8ff'; c.stroke();
+      const p = at((x0 + x1) / 2, (z0 + z1) / 2);
+      c.font = '600 12px "Segoe UI", system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      const w = c.measureText(z.name).width + 12;
+      c.fillStyle = 'rgba(20,30,50,0.75)'; c.fillRect(p.px - w / 2, p.py - 9, w, 18);
+      c.fillStyle = '#bfe0ff'; c.fillText(z.name, p.px, p.py);
     }
     c.restore();
   }

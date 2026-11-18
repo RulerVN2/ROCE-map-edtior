@@ -90,18 +90,80 @@ export const MOD_UNITS = [
   ['heavy_mounted_crossbowman', "Kỵ Nỏ Hạng Nặng"],
 ];
 
+
+export const BUILDINGS = [
+  ['town_center', 'Town Center'], ['house', 'House'], ['lumber_camp', 'Lumber Camp'], ['mining_camp', 'Mining Camp'], ['mill', 'Mill'],
+  ['barracks', 'Barracks'], ['archery_range', 'Archery Range'], ['stable', 'Stable'], ['siege_workshop', 'Siege Workshop'],
+  ['blacksmith', 'Blacksmith'], ['market', 'Market'], ['monastery', 'Monastery'], ['university', 'University'], ['castle', 'Castle'],
+  ['watch_tower', 'Watch Tower'], ['guard_tower', 'Guard Tower'], ['keep', 'Keep'], ['bombard_tower', 'Bombard Tower'], ['dock', 'Dock'],
+  ['xenon_hospital', 'Xenon Hospital'], ['palisade_wall', 'Palisade Wall'], ['stone_wall', 'Stone Wall'], ['fortified_wall', 'Fortified Wall'],
+  ['palisade_gate', 'Palisade Gate'], ['stone_gate', 'Stone Gate'],
+];
+export const RES = [['food', 'Thức ăn'], ['wood', 'Gỗ'], ['gold', 'Vàng'], ['stone', 'Đá']];
+export const OPS = ['>=', '<=', '==', '>', '<', '!='];
+export const DIFFICULTIES = ['Dễ', 'Thường', 'Khó'];
+
+/**
+ * Mô tả các điều kiện và hành động của trigger. Mỗi trường: [khoá, nhãn, kiểu, mặc định].
+ * Kiểu: slot, slot0 (cho phép 0), zone, zone? (không bắt buộc), taskforce, unit, building, building*, res, op, int, text, bool, trigger,
+ * team, order, stance, what, objstate, opset, trigop, result.
+ */
+export const COND_TYPES = {
+  timer: { label: 'Đã qua số giây', fields: [['seconds', 'Giây', 'int', 60]] },
+  unitCount: { label: 'Số quân', fields: [['slot', 'Ô', 'slot', 1], ['unit', 'Loại', 'unit', 'any'], ['op', '', 'op', '>='], ['n', 'Số', 'int', 1]] },
+  buildingCount: { label: 'Số công trình', fields: [['slot', 'Ô', 'slot', 1], ['building', 'Loại', 'building*', 'any'], ['op', '', 'op', '>='], ['n', 'Số', 'int', 1]] },
+  inZone: { label: 'Quân ở trong vùng', fields: [['slot', 'Ô', 'slot', 1], ['zone', 'Vùng', 'zone', ''], ['op', '', 'op', '>='], ['n', 'Số', 'int', 1]] },
+  detect: { label: 'Phát hiện (tầm nhìn)', fields: [['viewer', 'Ô nhìn', 'slot', 1], ['target', 'Thấy ô', 'slot', 2], ['what', 'Thấy gì', 'what', 'any']] },
+  resource: { label: 'Tài nguyên', fields: [['slot', 'Ô', 'slot', 1], ['res', 'Loại', 'res', 'gold'], ['op', '', 'op', '>='], ['n', 'Số', 'int', 500]] },
+  flag: { label: 'Cờ / biến', fields: [['name', 'Tên cờ', 'text', 'co1'], ['op', '', 'op', '>='], ['n', 'Giá trị', 'int', 1]] },
+  teamDead: { label: 'Đội bị diệt', fields: [['team', 'Tên đội', 'team', '']] },
+};
+export const ACT_TYPES = {
+  createTeam: { label: 'Lập đội quân', fields: [['slot', 'Ô', 'slot', 2], ['taskforce', 'Đội mẫu', 'taskforce', ''], ['zone', 'Tại vùng', 'zone?', ''], ['team', 'Tên đội', 'text', 'doi1']] },
+  teamOrder: { label: 'Ra lệnh cho đội', fields: [['team', 'Tên đội', 'team', ''], ['order', 'Lệnh', 'order', 'attack'], ['zone', 'Vùng', 'zone?', '']] },
+  aiJobs: { label: 'Đặt tỉ lệ dân làm việc', fields: [['slot', 'Ô', 'slot', 2], ['food', 'Ăn', 'int', 25], ['wood', 'Gỗ', 'int', 40], ['gold', 'Vàng', 'int', 20], ['stone', 'Đá', 'int', 15]] },
+  aiCheat: { label: 'Bật/tắt cheat tài nguyên', fields: [['slot', 'Ô', 'slot', 2], ['on', 'Bật', 'bool', true], ['rate', 'Mỗi loại/phút', 'int', 60]] },
+  aiBuild: { label: 'AI đặt công trình', fields: [['slot', 'Ô', 'slot', 2], ['building', 'Loại', 'building', 'barracks'], ['zone', 'Trong vùng', 'zone', '']] },
+  giveRes: { label: 'Cho / trừ tài nguyên', fields: [['slot', 'Ô', 'slot', 1], ['res', 'Loại', 'res', 'gold'], ['n', 'Số (âm = trừ)', 'int', 100]] },
+  diplomacy: { label: 'Đổi ngoại giao', fields: [['a', 'Ô A', 'slot', 1], ['b', 'Ô B', 'slot', 2], ['stance', 'Thành', 'stance', 'enemy']] },
+  objective: { label: 'Mục tiêu', fields: [['id', 'Mã', 'text', 'm1'], ['text', 'Nội dung', 'text', ''], ['state', 'Trạng thái', 'objstate', 'add']] },
+  result: { label: 'Thắng / thua kịch bản', fields: [['value', 'Kết quả', 'result', 'win'], ['text', 'Lời nhắn', 'text', '']] },
+  message: { label: 'Hiện tin nhắn', fields: [['text', 'Nội dung', 'text', '']] },
+  setFlag: { label: 'Đặt cờ / biến', fields: [['name', 'Tên cờ', 'text', 'co1'], ['op', '', 'opset', 'set'], ['n', 'Giá trị', 'int', 1]] },
+  trigger: { label: 'Điều khiển trigger khác', fields: [['id', 'Trigger', 'trigger', ''], ['op', '', 'trigop', 'enable'], ['delay', 'Chờ (giây)', 'int', 0]] },
+};
+export const ORDERS = [['move', 'Đi tới vùng'], ['attack', 'Tấn công (đi tới vùng rồi đánh)'], ['guard', 'Canh gác tại chỗ'], ['hold', 'Đứng yên'], ['home', 'Về Town Center'], ['disband', 'Giải tán đội']];
+
 export function defaultScenario() {
   return {
     name: 'Kịch bản mới',
     fog: true,                       // sương mù chiến tranh: kịch bản mặc định bật
+    difficulty: 1,
     players: Array.from({ length: MAX_PLAYERS }, (_, i) => ({
       active: i < 2, civ: CIVS[i % CIVS.length][0], color: COLORS[i][0], team: 0,
       food: 200, wood: 200, gold: 100, stone: 200, age: 0,
     })),
+    zones: [],                       // [{id, name, x0, z0, x1, z1}]
+    taskforces: [],                  // [{id, name, units: [{unit, count}]}]
+    ai: Array.from({ length: MAX_PLAYERS }, () => ({ enabled: false, cheat: false, cheatRate: 60, builders: 2, jobs: { food: 25, wood: 40, gold: 20, stone: 15 } })),
+    triggers: [],                    // [{id, name, enabled, once, repeat, any, diff:[b,b,b], conditions:[{type,...}], actions:[{type,...}]}]
   };
 }
 
 const num = (v, lo, hi, d) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : d; };
+const str = (v, d = '', max = 200) => (typeof v === 'string' ? v.slice(0, max) : d);
+const idOk = (s) => /^[A-Za-z0-9_.-]{1,40}$/.test(s);
+
+function cleanParams(src, schema) {
+  const out = {};
+  for (const [k, , kind, def] of schema.fields) {
+    const v = src?.[k];
+    if (kind === 'int' || kind === 'slot' || kind === 'slot0') out[k] = num(v, kind === 'int' ? -999999 : 0, kind === 'int' ? 999999 : MAX_PLAYERS, def);
+    else if (kind === 'bool') out[k] = v === undefined ? def : !!v;
+    else out[k] = str(v, def, 200);
+  }
+  return out;
+}
 
 /** Làm sạch dữ liệu đọc từ tệp dự án (tệp cũ không có, hoặc bị sửa tay). */
 export function normalizeScenario(s) {
@@ -109,6 +171,7 @@ export function normalizeScenario(s) {
   if (!s || typeof s !== 'object') return d;
   d.name = typeof s.name === 'string' && s.name.trim() ? s.name.trim().slice(0, 60) : d.name;
   d.fog = s.fog === undefined ? true : !!s.fog;
+  d.difficulty = num(s.difficulty, 0, 2, 1);
   const civs = new Set(CIVS.map((c) => c[0])), colors = new Set(COLORS.map((c) => c[0]));
   d.players = d.players.map((p, i) => {
     const q = Array.isArray(s.players) ? s.players[i] : null;
@@ -120,28 +183,62 @@ export function normalizeScenario(s) {
       age: num(q.age, 0, 3, 0),
     };
   });
+  const seen = new Set();
+  const uniq = (id) => { if (!idOk(id) || seen.has(id)) return null; seen.add(id); return id; };
+  d.zones = (Array.isArray(s.zones) ? s.zones : []).map((z) => {
+    const id = uniq(str(z?.id, '', 40)); if (!id) return null;
+    const x0 = num(z.x0, 0, 99999, 0), x1 = num(z.x1, 0, 99999, 0), z0 = num(z.z0, 0, 99999, 0), z1 = num(z.z1, 0, 99999, 0);
+    return { id, name: str(z.name, id, 40) || id, x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1) };
+  }).filter(Boolean);
+  seen.clear();
+  d.taskforces = (Array.isArray(s.taskforces) ? s.taskforces : []).map((tf) => {
+    const id = uniq(str(tf?.id, '', 40)); if (!id) return null;
+    const units = (Array.isArray(tf.units) ? tf.units : []).map((u) => ({ unit: str(u?.unit, '', 60), count: num(u?.count, 1, 200, 1) })).filter((u) => u.unit);
+    return { id, name: str(tf.name, id, 40) || id, units };
+  }).filter(Boolean);
+  d.ai = d.ai.map((a, i) => {
+    const q = Array.isArray(s.ai) ? s.ai[i] : null;
+    if (!q) return a;
+    const j = q.jobs ?? {};
+    return {
+      enabled: !!q.enabled, cheat: !!q.cheat, cheatRate: num(q.cheatRate, 0, 10000, 60), builders: num(q.builders, 1, 10, 2),
+      jobs: { food: num(j.food, 0, 100, a.jobs.food), wood: num(j.wood, 0, 100, a.jobs.wood), gold: num(j.gold, 0, 100, a.jobs.gold), stone: num(j.stone, 0, 100, a.jobs.stone) },
+    };
+  });
+  seen.clear();
+  d.triggers = (Array.isArray(s.triggers) ? s.triggers : []).map((t) => {
+    const id = uniq(str(t?.id, '', 40)); if (!id) return null;
+    const diff = Array.isArray(t.diff) ? [0, 1, 2].map((k) => t.diff[k] !== false) : [true, true, true];
+    const conds = (Array.isArray(t.conditions) ? t.conditions : []).filter((c) => COND_TYPES[c?.type]).map((c) => ({ type: c.type, ...cleanParams(c, COND_TYPES[c.type]) }));
+    const acts = (Array.isArray(t.actions) ? t.actions : []).filter((a) => ACT_TYPES[a?.type]).map((a) => ({ type: a.type, ...cleanParams(a, ACT_TYPES[a.type]) }));
+    return { id, name: str(t.name, id, 60) || id, enabled: t.enabled !== false, once: t.once !== false, repeat: num(t.repeat, 0, 86400, 0), any: !!t.any, diff, conditions: conds, actions: acts };
+  }).filter(Boolean);
   return d;
 }
 
 /**
  * Nội dung aoe2_scenario.json. Ô người chơi đánh số 1..8 (0 là Gaia/trung lập) trùng với tag ScenarioSlot của entity.
- * Mod đọc tệp này khi bắt đầu ván: chia chủ sở hữu, phe, màu, tài nguyên, thời đại và sương mù theo ô.
+ * Mod đọc tệp này khi bắt đầu ván: chia chủ sở hữu, phe, màu, tài nguyên, thời đại, sương mù theo ô, rồi chạy trigger và AI.
  */
 export function scenarioJson(sc, mobs = []) {
   const s = normalizeScenario(sc);
   const count = new Array(MAX_PLAYERS + 1).fill(0);
   for (const m of mobs) { const k = m.slot | 0; if (k >= 0 && k <= MAX_PLAYERS) count[k]++; }
   return {
-    format: 'aoe2-scenario', version: 1, name: s.name, fog: s.fog,
+    format: 'aoe2-scenario', version: 2, name: s.name, fog: s.fog, difficulty: s.difficulty,
     players: s.players.map((p, i) => ({
       slot: i + 1, active: p.active, civ: p.civ, color: p.color, team: p.team, age: p.age,
       resources: { food: p.food, wood: p.wood, gold: p.gold, stone: p.stone }, units: count[i + 1],
     })),
     gaiaUnits: count[0],
+    zones: s.zones,
+    taskforces: s.taskforces,
+    ai: s.ai.map((a, i) => ({ slot: i + 1, ...a })),
+    triggers: s.triggers,
   };
 }
 
-/** Cảnh báo khi đơn vị gán cho ô không dùng, hoặc tệp bố trí thiếu người chơi. Trả về mảng câu tiếng Việt. */
+/** Cảnh báo cho người làm kịch bản. Trả về mảng câu tiếng Việt. */
 export function scenarioWarnings(sc, mobs = []) {
   const s = normalizeScenario(sc), out = [];
   const n = s.players.filter((p) => p.active).length;
@@ -149,5 +246,27 @@ export function scenarioWarnings(sc, mobs = []) {
   const orphan = new Set();
   for (const m of mobs) { const k = m.slot | 0; if (k > 0 && !s.players[k - 1]?.active) orphan.add(k); }
   for (const k of [...orphan].sort()) out.push(`Ô ${k} đang tắt nhưng vẫn có đơn vị gán cho nó.`);
-  return out;
+  const zones = new Set(s.zones.map((z) => z.id)), tfs = new Set(s.taskforces.map((t) => t.id)), trs = new Set(s.triggers.map((t) => t.id));
+  const teams = new Set();
+  for (const t of s.triggers) for (const a of t.actions) if (a.type === 'createTeam' && a.team) teams.add(a.team);
+  for (const t of s.triggers) {
+    const here = `Trigger "${t.name}": `;
+    const items = [...t.conditions.map((c) => ({ ...c, _c: true })), ...t.actions];
+    for (const it of items) {
+      const schema = (it._c ? COND_TYPES : ACT_TYPES)[it.type];
+      for (const [k, , kind] of schema.fields) {
+        const v = it[k];
+        if (kind === 'zone' && !zones.has(v)) out.push(here + 'chưa chọn vùng hợp lệ.');
+        if (kind === 'taskforce' && !tfs.has(v)) out.push(here + 'chưa chọn đội mẫu hợp lệ.');
+        if (kind === 'trigger' && !trs.has(v)) out.push(here + 'trigger được điều khiển không tồn tại.');
+        if (kind === 'zone?' && v && !zones.has(v)) out.push(here + `vùng "${v}" không tồn tại.`);
+        if (kind === 'team' && !teams.has(v)) out.push(here + `đội "${v}" chưa từng được lập ở trigger nào.`);
+        if (kind === 'slot' && v >= 1 && !s.players[v - 1].active) out.push(here + `nhắc tới ô ${v} đang tắt.`);
+        if (kind === 'slot' && it.type === 'createTeam' && v >= 1 && !s.ai[v - 1].enabled && !s.players[v - 1].active) out.push(here + `ô ${v} không hoạt động.`);
+      }
+      if (it.type === 'createTeam' && !it.zone) out.push(here + 'lập đội không chọn vùng: quân sẽ xuất hiện cạnh Town Center của ô đó (cần có sẵn).');
+    }
+    if (!t.actions.length) out.push(here + 'chưa có hành động nào.');
+  }
+  return [...new Set(out)];
 }

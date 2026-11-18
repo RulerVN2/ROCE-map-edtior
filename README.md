@@ -26,3 +26,11 @@ Mở: `npm install` rồi `npm start`. Đóng gói .exe (Windows): `npm run pack
 
 ## Tài liệu
 - Kế hoạch và nhật ký tính năng: [docs/map_builder_plan.md](docs/map_builder_plan.md)
+
+---
+
+## Kịch bản (scenario) cho mod
+
+Tab **[Người chơi]**: 8 ô như AoE2 Scenario Editor (văn minh, màu, phe, tài nguyên, thời đại, sương mù).
+Tab **[Kịch bản]** + công cụ **[Vùng]**: vẽ vùng, đội mẫu (TaskForce), AI cho ô không người chơi, trigger (điều kiện → hành động).
+Xuất world sẽ ghi thêm `aoe2_scenario.json` (version 2) cạnh `level.dat`; mod v466 trở lên đọc tệp này. Chi tiết trường dữ liệu: `src/core/scenario.js`.

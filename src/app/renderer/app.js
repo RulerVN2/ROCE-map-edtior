@@ -9,6 +9,7 @@ import { renderThumb } from './thumb.js';
 import { Textures } from './textures.js';
 import { MiniMap } from './minimap.js';
 import { PROP_GROUPS, PROP_CATALOG, PROP_BY_KEY, PROP_MIXES, PROP_SIZES, makeProp, pickFromMix } from '../../core/props.js';
+import { initScriptUi } from './script-ui.js';
 import { AGES, CIVS, COLORS, MAX_PLAYERS, normalizeScenario, scenarioWarnings } from '../../core/scenario.js';
 import { MOB_CATALOG, MOB_GROUPS, checkMobSpec, formationPoints, makeMob, mobColor, mobStyle, mobGroups } from '../../core/mobs.js';
 
@@ -89,6 +90,7 @@ function setTool(id) {
   if (id.startsWith('cave') && !view.showCaves) setCaveView(true);
   state.lineStart = null; state.stairStart = null; state.stLine = null;
   if (id === 'mob') showTab('mob');
+  if (id === 'zone') showTab('script');
   if (id === 'prop') showTab('prop');
   state.dirty = true;
 }
@@ -227,7 +229,7 @@ function refreshStatus() {
 // ---- Bảng bên phải: [Structure], [Road], [Mob] ----
 function showTab(id) {
   for (const t of document.querySelectorAll('.tab')) t.classList.toggle('active', t.dataset.tab === id);
-  for (const name of ['structure', 'road', 'mob', 'placed', 'prop', 'players']) $('tab-' + name).hidden = name !== id;
+  for (const name of ['structure', 'road', 'mob', 'placed', 'prop', 'players', 'script']) $('tab-' + name).hidden = name !== id;
 }
 for (const tab of document.querySelectorAll('.tab')) tab.addEventListener('click', () => showTab(tab.dataset.tab));
 ROADS.forEach((r, i) => {
@@ -513,6 +515,7 @@ const snapshot = () => ({
   props: terrain.props.slice(), // mỗi prop là đối tượng bất biến (không bao giờ sửa tại chỗ) nên chỉ cần chép danh sách
   spawn: terrain.spawn && { ...terrain.spawn },
   border: terrain.border && { ...terrain.border },
+  scenario: JSON.parse(JSON.stringify(terrain.scenario)),
 });
 function restore(snap) {
   LAYERS.forEach((k, i) => terrain[k].set(snap.layers[i]));
@@ -523,6 +526,8 @@ function restore(snap) {
   refreshMobTotal(); refreshPropTotal();
   terrain.spawn = snap.spawn && { ...snap.spawn };
   terrain.border = snap.border && { ...snap.border };
+  terrain.scenario = JSON.parse(JSON.stringify(snap.scenario));
+  window.__refreshScenario?.();
   refreshStructures();
 }
 function pushUndo() {
@@ -688,6 +693,29 @@ function dragBorder(cell) {
   const nb = borderBox(terrain);
   message(`World border: ${nb.size} x ${nb.size}, tâm ${nb.cx}, ${nb.cz} (từ ${nb.x0},${nb.z0} đến ${nb.x1},${nb.z1})`);
   return ch;
+}
+// ---- Vùng của kịch bản: kéo chuột để vẽ hình chữ nhật, Shift + bấm để gỡ ----
+function startZone(cell, shift) {
+  const zs = terrain.scenario.zones;
+  if (shift) {
+    const i = zs.findLastIndex((z) => cell.x >= z.x0 && cell.x <= z.x1 && cell.z >= z.z0 && cell.z <= z.z1);
+    if (i < 0) return message('Không có vùng nào ở ô này');
+    pushUndo(); const [gone] = zs.splice(i, 1); window.__refreshScenario(); state.dirty = true; return message(`Đã gỡ vùng "${gone.name}"`);
+  }
+  pushUndo(); state.painting = true; state.strokeChanged = true;
+  const id = script.nextId('z', zs);
+  state.zn = { id, ox: cell.x, oz: cell.z };
+  zs.push({ id, name: 'Vùng ' + id.slice(1), x0: cell.x, z0: cell.z, x1: cell.x, z1: cell.z });
+  window.__refreshScenario();
+}
+function dragZone(cell) {
+  const zn = state.zn; if (!zn) return false;
+  const z = terrain.scenario.zones.find((q) => q.id === zn.id); if (!z) return false;
+  const x0 = Math.min(zn.ox, cell.x), x1 = Math.max(zn.ox, cell.x), z0 = Math.min(zn.oz, cell.z), z1 = Math.max(zn.oz, cell.z);
+  if (z.x0 === x0 && z.x1 === x1 && z.z0 === z0 && z.z1 === z1) return false;
+  z.x0 = x0; z.x1 = x1; z.z0 = z0; z.z1 = z1;
+  message(`Vùng "${z.name}": ${x1 - x0 + 1} x ${z1 - z0 + 1} khối`);
+  return true;
 }
 function clickSpawn(cell, shift) {
   pushUndo();
@@ -948,6 +976,7 @@ function penDown0(cell, e) {
     if (state.tool === 'cavestair') return clickStair(cell, e.shiftKey);
     if (state.tool === 'border') return startBorder(cell, e.shiftKey);
     if (state.tool === 'mob') return clickMob(cell, e.shiftKey);
+    if (state.tool === 'zone') return startZone(cell, e.shiftKey);
     if (state.tool === 'prop' && state.propMode === 'place') return clickProp(cell, e.shiftKey);
     if (state.tool === 'road' && state.roadMode === 'line') return clickRoadLine(cell, e.shiftKey);
     pushUndo(); state.painting = true; state.strokeChanged = false;
@@ -977,6 +1006,7 @@ function penMove(p, e) {
   state.last = p; state.mouse = p; state.shift = e.shiftKey; state.dirty = true;
 }
 const endStroke = () => {
+  if (state.zn) { state.zn = null; window.__refreshScenario?.(); }
   if (state.painting && !state.strokeChanged) state.undo.pop();
   if (state.painting && state.tool === 'prop') { refreshPropTotal(); refreshPlaced(); }
   state.painting = false; state.panning = false; touch3D();
@@ -1031,6 +1061,7 @@ window.addEventListener('resize', () => { view.resize(); state.dirty = true; });
 // ---- Vòng lặp ----
 function paint(cell, dt) {
   if (state.tool === 'border') return dragBorder(cell);
+  if (state.tool === 'zone') return dragZone(cell);
   if (state.tool === 'prop') return propStroke(cell, dt);
   const o = {
     tool: state.tool, radius: state.radius, strength: state.strength, dt,
@@ -1066,7 +1097,7 @@ function frame(now) {
   if (state.painting && cell && paint(cell, dt)) { state.strokeChanged = true; state.dirty = true; mini.invalidate(); touch3D(); }
   if (mini.stale && !$('minimap').hidden) state.dirty = true; // nền bản đồ nhỏ còn chờ vẽ lại
   if (state.dirty) {
-    const pointTool = state.tool === 'structure' || state.tool === 'spawn' || state.tool === 'border' || (state.tool === 'mob' && !state.shift) || (state.tool === 'prop' && state.propMode === 'place' && !state.shift);
+    const pointTool = state.tool === 'structure' || state.tool === 'spawn' || state.tool === 'border' || state.tool === 'zone' || (state.tool === 'mob' && !state.shift) || (state.tool === 'prop' && state.propMode === 'place' && !state.shift);
     if (editing3D()) v3.cursor = cell ? { x: cell.x, z: cell.z, r: pointTool ? 0 : state.radius } : null;
     view.brush = cell && !pointTool ? { x: cell.x, z: cell.z, radius: state.radius } : null;
     view.ghost = null;
@@ -1163,6 +1194,7 @@ $('btn-open').addEventListener('click', async () => {
 });
 
 // ---- Kịch bản: 8 ô người chơi ----
+const script = initScriptUi({ $, getTerrain: () => terrain, changed: () => { state.dirty = true; }, focusZone: (z) => focusOn((z.x0 + z.x1 + 1) / 2, (z.z0 + z.z1 + 1) / 2) });
 (() => {
   const slotSel = $('mob-slot');
   slotSel.add(new Option('Gaia (trung lập)', '0'));
@@ -1172,6 +1204,7 @@ $('btn-open').addEventListener('click', async () => {
   const sel = (opts, val, on) => { const s = mk('select'); for (const [v, n] of opts) s.add(new Option(n, v)); s.value = val; s.addEventListener('change', () => on(s.value)); return s; };
   const touch = () => { state.dirty = true; refreshScenarioWarn(); };
   window.__refreshScenario = () => {
+    script.render();
     const sc = terrain.scenario; $('sc-name').value = sc.name; $('sc-fog').checked = sc.fog; box.textContent = '';
     sc.players.forEach((p, i) => {
       const act = mk('input', { type: 'checkbox', checked: p.active, title: 'Bật ô này để người chơi hoặc máy dùng nó.' });

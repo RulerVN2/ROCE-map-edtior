@@ -274,6 +274,7 @@ export function materialAt(t, x, z) {
 
 // ---- Cọ ----
 export const TOOLS = {
+  zone: { group: 'Kịch bản', name: 'Vùng', hint: 'Kéo chuột để vẽ một vùng chữ nhật cho kịch bản (điều kiện, lập đội, tập kết, đặt công trình). Shift + bấm vào vùng để gỡ. Đặt tên và dùng vùng ở bảng [Kịch bản].' },
   raise: { group: 'Địa hình', name: 'Nâng', hint: 'Kéo chuột để đắp đất cao lên. Giữ Shift để hạ xuống.' },
   lower: { name: 'Hạ', hint: 'Kéo chuột để đào đất thấp xuống. Giữ Shift để nâng lên.' },
   smooth: { name: 'Làm mịn', hint: 'Kéo chuột để làm mềm các chỗ gồ ghề, lởm chởm.' },

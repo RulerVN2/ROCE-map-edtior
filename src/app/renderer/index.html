@@ -97,6 +97,7 @@
  <button class="tab" data-tab="placed" title="Danh sách mọi công trình và mob đang có trên map. Bấm một dòng để nhảy tới, bấm ✕ để gỡ.">[Đã đặt]</button>
       <button class="tab" data-tab="prop" title="Cây, bụi, hoa, khoáng sản và vật dụng: bấm để đặt từng cái hoặc kéo chuột để vẽ cả vạt rừng.">[Cây]</button>
       <button class="tab" data-tab="mob" title="Mob: chọn sinh vật (kể cả mob của mod) rồi bấm lên map để đặt, có thể đặt cả đội hình.">[Mob]</button>
+      <button class="tab" data-tab="script" title="Vùng, đội quân, AI và trigger (điều kiện → hành động) của kịch bản.">[Kịch bản]</button>
       <button class="tab" data-tab="players" title="Kịch bản cho mod AoE2: 8 ô người chơi (văn minh, màu, phe, tài nguyên, thời đại) và sương mù chiến tranh.">[Người chơi]</button>
     </div>
     <div id="tab-structure">
@@ -188,6 +189,22 @@
       </div>
       <p id="prop-total" class="empty"></p>
       <p class="empty">Cây và vật thể chỉ thành khối thật khi xuất world, nên đặt trước hay sau khi sửa địa hình đều được: cây tự đứng theo mặt đất mới. Cây không mọc dưới nước hay bên trong công trình. Giữ Shift (hiện vòng tròn theo "Cỡ cọ") rồi bấm hoặc kéo để gỡ.</p>
+    </div>
+    <div id="tab-script" hidden>
+      <label class="row" title="Độ khó mặc định. Mỗi trigger chọn được chạy ở độ khó nào. Chủ phòng đổi bằng lệnh /aoe2 difficulty trước khi Start.">Độ khó mặc định
+        <select id="sc-diff"></select></label>
+      <details open><summary title="Vùng chữ nhật dùng cho điều kiện (quân vào vùng) và hành động (lập đội, tập kết, đặt công trình). Vẽ bằng công cụ [Vùng].">Vùng</summary>
+        <div id="zone-list"></div></details>
+      <details><summary title="Đội mẫu: danh sách loại quân và số lượng. Trigger lập đội này (tốn tài nguyên và dân số).">Đội quân (TaskForce)</summary>
+        <div id="tf-list"></div>
+        <button id="tf-add" class="wide">+ Thêm đội mẫu</button></details>
+      <details><summary title="AI cho ô không có người chơi: chia dân theo nghề, cheat tài nguyên, số thợ xây.">AI (ô không người chơi)</summary>
+        <div id="ai-list"></div></details>
+      <details open><summary title="Mỗi trigger: nếu điều kiện đúng thì chạy các hành động.">Trigger</summary>
+        <div id="trg-list"></div>
+        <button id="trg-add" class="wide">+ Thêm trigger</button></details>
+      <datalist id="sc-teams"></datalist>
+      <p id="script-warn" class="empty" style="white-space:pre-line"></p>
     </div>
     <div id="tab-players" hidden>
       <label class="row" title="Tên kịch bản, ghi vào aoe2_scenario.json.">Tên kịch bản
