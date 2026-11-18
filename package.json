@@ -1,0 +1,19 @@
+{
+  "name": "rise-of-cubic-empire-map-builder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Trình dựng map và kịch bản (scenario editor) cho mod Rise Of Cubic Empire",
+  "scripts": {
+    "test": "node --test",
+    "sample": "node scripts/make-sample.js",
+    "start": "electron .",
+    "package": "electron-packager . RiseOfCubicEmpireMapBuilder --platform=win32 --arch=x64 --out=out --overwrite --ignore=\"^/(out|test|docs|scripts)\" --ignore=\"\\.github\""
+  },
+  "main": "src/app/main.js",
+  "productName": "Rise Of Cubic Empire Map Builder",
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^45.3.2"
+  }
+}

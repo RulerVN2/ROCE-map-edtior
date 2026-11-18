@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+<title>Rise Of Cubic Empire Map Builder</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="toolbar">
+  <div class="group">
+    <button id="btn-new" title="Tạo map mới: chọn kích thước, độ cao nền và biome nền.">Map mới</button>
+    <button id="btn-open" title="Mở một dự án đã lưu (.mcmap).">Mở</button>
+    <button id="btn-save" title="Lưu dự án để lần sau vẽ tiếp (Ctrl+S).">Lưu</button>
+  </div>
+  <div class="sep"></div>
+  <div class="group">
+    <button id="btn-undo" title="Hoàn tác thao tác vừa rồi (Ctrl+Z).">Hoàn tác</button>
+    <button id="btn-redo" title="Làm lại thao tác vừa hoàn tác (Ctrl+Y).">Làm lại</button>
+  </div>
+  <div class="sep"></div>
+  <div class="group">
+    <button id="btn-3d" title="Xem map ở dạng 3D, xoay camera tự do (phím V).">Xem 3D (V)</button>
+    <button id="btn-edit3d" hidden title="Bật để dùng công cụ đang chọn (nâng, hạ, tô, đặt công trình, mob, cây...) ngay trong cảnh 3D. Khi bật: chuột trái = công cụ, chuột phải = xoay, chuột giữa = dời.">Sửa 3D</button>
+    <button id="btn-caves" title="Bật/tắt xem hang (phím H). Bật lên thì chỗ không có hang xám tối đi, hang hiện rõ: tím = hang tự sinh, cam = hang đào tay và lối dốc, vàng = cửa hang.">Hang (H)</button>
+  </div>
+  <div class="sep"></div>
+  <span id="tool-name" title="Công cụ đang dùng."></span>
+  <label class="slider" title="Kích cỡ cọ, tính bằng số khối. Phím tắt: [ và ].">Cỡ cọ
+    <input id="brush-size" type="range" min="1" max="64" step="1" value="12"><output id="brush-size-out">12</output></label>
+  <label class="slider" id="strength-row" title="Cọ tác động nhanh hay chậm.">Độ mạnh
+    <input id="brush-strength" type="range" min="5" max="100" step="5" value="40"><output id="brush-strength-out">40</output></label>
+  <label class="slider opt" data-for="deco" title="Tỉ lệ ô được rải trang trí trong vùng cọ (100 = kín hết).">Mật độ
+    <input id="deco-density" type="range" min="2" max="100" step="2" value="30"><output id="deco-density-out">30</output></label>
+  <label class="slider opt" data-for="elev" title="Cách tính độ cao của bậc."><select id="elev-mode"><option value="rel">Nâng thêm</option><option value="abs">Đặt đúng Y</option></select></label>
+  <label class="slider opt" data-for="elev" title="Bậc: nâng thêm bao nhiêu khối so với chỗ bấm đầu tiên (Shift để hạ).">Bậc
+    <select id="elev-n"></select></label>
+  <label class="slider opt" id="elev-y-row" data-for="elev" title="Độ cao Y khi chọn \"Đặt đúng độ cao Y\" (mực nước thường ở khoảng 62).">Độ cao Y
+    <input id="elev-y" type="range" min="-30" max="220" step="1" value="70"><output id="elev-y-out">70</output></label>
+  <label class="slider opt" data-for="elev" title="Bề rộng sườn thoải ở mép cọ, tính bằng số khối. 0 = vách dựng đứng.">Sườn
+    <input id="elev-slope" type="range" min="0" max="24" step="1" value="4"><output id="elev-slope-out">4</output></label>
+  <label class="slider opt" data-for="cliff" title="Vách cao hơn chỗ bấm đầu tiên bao nhiêu khối.">Cao vách
+    <input id="cliff-height" type="range" min="1" max="40" step="1" value="8"><output id="cliff-height-out">8</output></label>
+  <label class="slider opt" data-for="cavedig cavestair" title="Sàn hang (hoặc sân cuối của lối dốc) nằm dưới mặt đất chỗ bấm đầu tiên bao nhiêu khối.">Sâu
+    <input id="cave-depth" type="range" min="6" max="100" step="1" value="20"><output id="cave-depth-out">20</output></label>
+  <label class="slider opt" data-for="cavedig cavestair" title="Trần hang cao hơn sàn bao nhiêu khối ở giữa nét cọ (ra mép thấp dần thành vòm).">Cao hang
+    <input id="cave-height" type="range" min="3" max="40" step="1" value="7"><output id="cave-height-out">7</output></label>
+  <label class="slider opt" data-for="paint" title="Loại khối bề mặt sẽ tô. Tự động = xoá chỗ đã tô, trả về quy tắc tự động.">Vật liệu
+    <select id="paint-material"></select></label>
+ <label class="slider opt" data-for="paint" title="Khi tô ruộng: tự chừa các rãnh mương nước cứ 9 ô một rãnh để đất ruộng luôn ẩm (nước tưới được đất trong phạm vi 4 ô). Mương chạy dọc theo trục z hoặc trục x của map.">Mương
+    <select id="paint-ditch"><option value="">Không đào mương</option><option value="x">Mương dọc theo trục z</option><option value="z">Mương dọc theo trục x</option></select></label>
+  <label class="slider opt" data-for="biome" title="Biome sẽ tô. Biome nền = xoá chỗ đã tô.">Biome
+    <select id="paint-biome"></select></label>
+  <div class="spacer"></div>
+  <button id="btn-export" class="primary" title="Xuất thành thế giới Minecraft 1.20.1, chép vào thư mục saves là chơi được.">Xuất world</button>
+</header>
+
+<main>
+  <nav id="tools" title="Công cụ vẽ. Rê chuột lên từng nút để xem cách dùng."></nav>
+  <section id="viewport">
+    <canvas id="view"></canvas>
+    <canvas id="view3d"></canvas>
+    <div id="hint3d" hidden>Xem 3D: kéo chuột trái để xoay · kéo chuột phải hoặc giữa để dời · lăn chuột để zoom · W A S D / phím mũi tên để bay (giữ Shift cho nhanh) · Q E để xoay · V hoặc Esc để về khung 2D · nút "Sửa 3D": chuột trái dùng công cụ, chuột phải xoay</div>
+    <div id="hint"></div>
+    <div id="tip" hidden></div>
+    <div id="pat-palette" hidden title="Chọn mẫu nền sẽ tô. Ô đang chọn có viền xanh."></div>
+    <div id="deco-palette" hidden title="Bấm để bật hoặc tắt từng loại. Có thể chọn nhiều loại: mỗi ô sẽ rải ngẫu nhiên một trong các loại đang bật."></div>
+    <div id="mat-palette" hidden title="Chọn loại khối bề mặt sẽ tô. Ô đang chọn có viền xanh."></div>
+    <details id="viewmenu">
+      <summary title="Bật tắt các lớp hiển thị và xem chú giải biểu tượng mob.">Hiển thị</summary>
+      <div id="viewopts">
+      <label title="Bật: hiện nhãn tên trên từng công trình và từng nhóm mob (khi phóng từ 2x trở lên). Tắt: chỉ hiện tên khi rê chuột lên. Phím tắt: N. Chương trình nhớ lựa chọn này.">
+        <input id="show-names" type="checkbox" checked> Hiện tên</label>
+      <label title="Đường đồng mức: cứ lên 5 khối độ cao có một nét sẫm, mỗi 25 khối một nét đậm. Nét càng sát nhau thì sườn càng dốc.">
+        <input id="show-contours" type="checkbox" checked> Đồng mức</label>
+      <label title="Xem lớp hang: mặt đất chuyển xám, vùng hang tự sinh tô tím, hang đào tay tô cam, cửa hang tô vàng. Tự bật khi dùng các công cụ hang.">
+        <input id="show-caves" type="checkbox"> Hang</label>
+      <label title="Bật: mặt đất và công trình vẽ bằng hình khối thật của Minecraft (cần file jar của game trên máy), từ mức phóng 6x trở lên. Tắt: vẽ bằng màu.">
+        <input id="show-tex" type="checkbox" checked> Texture Minecraft</label>
+      <p id="tex-status" class="empty"></p>
+      <button id="tex-jar" title="Chọn file jar của Minecraft (versions\\1.20.1\\1.20.1.jar) để lấy texture khi chương trình không tự tìm thấy.">Chọn jar Minecraft...</button>
+      <label title="Viền từng khối khi phóng từ 8x trở lên, để đếm khối cho dễ.">
+        <input id="show-grid" type="checkbox" checked> Lưới khối</label>
+      <label title="Bản đồ nhỏ ở góc dưới bên phải: toàn bộ map nhìn từ trên xuống, khung vàng là vùng đang xem. Bấm hoặc kéo trên đó để nhảy tới.">
+        <input id="show-mini" type="checkbox" checked> Bản đồ nhỏ</label>
+    </div>
+    <div id="legend" title="Hình dạng biểu tượng mob trên map.">
+      <span><i class="lg shield"></i>Lính</span><span><i class="lg triangle"></i>Quái</span><span><i class="lg circle"></i>Dân, vật nuôi</span><span><i class="lg diamond"></i>Khác</span><span><i class="lg star"></i>Mob mod</span>
+    </div>
+    </details>
+    <canvas id="minimap" width="200" height="200" title="Toàn bộ map nhìn từ trên xuống. Khung vàng là vùng đang xem. Bấm hoặc kéo để nhảy tới."></canvas>
+  </section>
+  <aside id="side">
+    <div class="tabs">
+      <button class="tab active" data-tab="structure" title="Công trình lưu dạng .schem: chọn một công trình rồi bấm lên map để đặt.">[Structure]</button>
+      <button class="tab" data-tab="road" title="Đường: chọn mẫu đường rồi kéo chuột để vẽ, đường sẽ thay các khối nó đè lên.">[Road]</button>
+ <button class="tab" data-tab="placed" title="Danh sách mọi công trình và mob đang có trên map. Bấm một dòng để nhảy tới, bấm ✕ để gỡ.">[Đã đặt]</button>
+      <button class="tab" data-tab="prop" title="Cây, bụi, hoa, khoáng sản và vật dụng: bấm để đặt từng cái hoặc kéo chuột để vẽ cả vạt rừng.">[Cây]</button>
+      <button class="tab" data-tab="mob" title="Mob: chọn sinh vật (kể cả mob của mod) rồi bấm lên map để đặt, có thể đặt cả đội hình.">[Mob]</button>
+      <button class="tab" data-tab="players" title="Kịch bản cho mod AoE2: 8 ô người chơi (văn minh, màu, phe, tài nguyên, thời đại) và sương mù chiến tranh.">[Người chơi]</button>
+    </div>
+    <div id="tab-structure">
+      <div class="btnrow">
+        <button id="btn-schem-open" title="Mở thư mục công trình trong File Explorer để chép file .schem vào.">Mở thư mục</button>
+        <button id="btn-schem-reload" title="Đọc lại thư mục sau khi bạn chép thêm hoặc xoá file .schem.">Tải lại</button>
+        <button id="btn-schem-folder" title="Dùng một thư mục khác, ví dụ thư mục schematics của WorldEdit trong Minecraft.">Đổi</button>
+      </div>
+      <p id="schem-folder" class="empty"></p>
+      <button id="btn-import-village" class="wide" title="Lấy nhà dân làng, trung tâm làng và đèn làng (5 kiểu làng: đồng cỏ, sa mạc, xavan, tuyết, rừng lá kim) từ chính bản Minecraft đã cài trên máy này, rồi thêm vào danh sách.">Nhập nhà làng từ Minecraft</button>
+      <label class="row" title="Mỗi thư mục con trong thư mục công trình là một nhóm.">Nhóm
+        <select id="schem-group"></select></label>
+      <div id="wall-panel" hidden>
+        <label class="check" title="Chọn từng mảnh rồi đặt như công trình thường."><input type="radio" name="wall-mode" id="wall-mode-place" value="place"> Hệ tường: Tự đặt từng mảnh</label>
+        <label class="check" title="Bấm các điểm, chương trình tự ghép đoạn thẳng, lỗ châu mai, góc, lô cốt và đầu tường nối liền như vẽ một con đường."><input type="radio" name="wall-mode" id="wall-mode-draw" value="draw" checked> Hệ tường: Nối vẽ như đường</label>
+        <div id="wall-opts">
+          <label class="row" title="Cứ mỗi N đoạn thì có một đoạn lỗ châu mai (2 là xen kẽ, 0 là không dùng).">Lỗ châu mai mỗi
+            <input id="wall-emb" type="number" min="0" max="8" value="2"> đoạn</label>
+          <label class="row" title="Cứ mỗi N đoạn có một lô cốt nhô ra phía mặt trước (0 là không dùng).">Lô cốt nhô mỗi
+            <input id="wall-bunker" type="number" min="0" max="20" value="5"> đoạn</label>
+          <label class="row" title="Phần trăm đoạn bị đổ nát hoặc thủng lỗ (dùng các mảnh đổ nát nếu có). 0 là tường nguyên vẹn.">Đổ nát (%)
+            <input id="wall-ruin" type="number" min="0" max="100" value="0"></label>
+          <label class="check" title="Chèn một cổng vào giữa tuyến (nếu bộ có mảnh cổng)."><input id="wall-gate" type="checkbox"> Có cổng ở giữa tuyến</label>
+          <label class="check" title="Đầu và cuối tuyến có mảnh đầu tường khép lại."><input id="wall-caps" type="checkbox" checked> Khép đầu tường hai đầu</label>
+          <label class="check" title="Mặc định mặt trước (phía có lỗ châu mai cao) nằm phía trong góc rẽ đầu tiên. Bật để đảo sang phía bên kia."><input id="wall-flip" type="checkbox"> Đảo mặt trước</label>
+          <label class="check" title="Bật: mọi mảnh cùng độ cao với điểm bấm đầu và tự đắp móng xuống đất, nên chỗ nối không bị lệch bậc. Tắt: mỗi mảnh theo mặt đất riêng."><input id="wall-flat" type="checkbox" checked> Cùng độ cao cả tuyến</label>
+          <p class="empty">Bấm lần lượt các điểm; tuyến cập nhật sau mỗi lần bấm. Enter hoặc Esc: kết thúc tuyến. Ctrl+Z: lùi một lần bấm. Chỉ ghép theo trục, rẽ 90 độ.</p>
+        </div>
+      </div>
+      <div id="schem-big" title="Hình xem trước lớn của công trình đang chọn (hoặc đang rê chuột lên), đúng theo hướng xoay và lật hiện tại.">
+        <canvas id="schem-big-cv" width="870" height="660"></canvas>
+        <div id="schem-big-name"></div>
+        <div class="btnrow">
+          <button id="schem-rot" title="Xoay công trình 90 độ (phím R).">Xoay (R)</button>
+          <button id="schem-flip" title="Lật công trình (phím F).">Lật (F)</button>
+        </div>
+      </div>
+      <div id="schem-list" class="cards"></div>
+      <label class="row" title="Đáy công trình cao hơn (số dương) hoặc chìm xuống (số âm) so với mặt đất chỗ bấm. Dùng số âm nếu công trình có sẵn móng.">Độ cao đặt
+        <input id="st-yoffset" type="number" min="-30" max="60" value="0"></label>
+      <label class="check" title="Bật: dán cả các khối không khí của công trình, tức là dọn sạch đất nằm trong lòng công trình. Tắt: chỉ đặt các khối đặc.">
+        <input id="st-air" type="checkbox"> Dọn đất bên trong</label>
+      <label class="check" title="Bật: bấm điểm đầu rồi điểm cuối, công trình được đặt lặp liền nhau dọc theo đoạn đó (hàng rào, tường, bao cát, lô cốt...), tự xoay theo hướng đoạn. Bấm tiếp để nối đoạn kế, Esc để kết thúc. Mỗi lần bấm là một lần hoàn tác.">
+        <input id="st-line" type="checkbox"> Đặt lặp dọc theo đường</label>
+      <label class="row" id="st-gap-row" hidden title="Khoảng hở giữa hai công trình liền nhau (khối). 0 là sát nhau.">Khoảng hở
+        <input id="st-gap" type="number" min="0" max="20" value="0"></label>
+      <label class="row" title="Nền cho công trình khi đặt. Móng: đắp khối đặc từ mặt đất lên sát sàn dưới các cột đặc của công trình, nên trên sườn dốc không còn công trình lơ lửng. San phẳng và sân: ngoài móng còn san phẳng mặt đất quanh công trình về đúng độ cao chỗ bấm, thoải dần ra địa hình cũ, rồi lát sân quanh chân theo kiểu nền đã chọn (có hoàn tác).">Nền
+        <select id="st-pad"><option value="none">Không</option><option value="found" selected>Đắp móng dưới công trình</option><option value="site">San phẳng, sân quanh và móng</option></select></label>
+      <label class="row" id="st-pad-style-row" title="Vật liệu móng và sân.">Kiểu nền
+        <select id="st-pad-style"></select></label>
+      <label class="row" id="st-pad-margin-row" hidden title="Sân rộng thêm bao nhiêu khối quanh chân công trình (khung vàng nét đứt khi rê chuột).">Sân rộng thêm
+        <input id="st-pad-margin" type="number" min="1" max="8" value="2"></label>
+      <p class="empty">R: xoay · F: lật · Shift + bấm: gỡ công trình</p>
+    </div>
+    <div id="tab-road" hidden>
+      <div class="modes" title="Cách vẽ đường.">
+        <label title="Kéo chuột để vẽ đường tự do theo nét cọ."><input type="radio" name="road-mode" value="brush" checked> Cọ vẽ</label>
+        <label title="Bấm điểm đầu, rồi bấm điểm cuối: đường chạy thẳng giữa hai điểm. Bấm tiếp để nối đoạn kế. Nhấn Esc để kết thúc.">
+          <input type="radio" name="road-mode" value="line"> Đặt thẳng</label>
+      </div>
+      <div id="road-list" class="list"></div>
+      <label class="check" title="Bật: đường tự đào bớt những chỗ dốc dưới cọ thành dốc thoải (lên 1 khối mỗi 2 khối), đi bộ và chạy xe lên được. Chỉ đào xuống, không đắp lên. Tắt: chỉ thay lớp khối bề mặt, giữ nguyên địa hình.">
+        <input id="road-grade" type="checkbox"> <span id="road-grade-text">Làm thoải nền đường</span></label>
+      <p class="empty">Bề rộng đường theo "Cỡ cọ". Giữ Shift: xoá đường (hào thì lấp lại). Đường băng, đường lăn, đường nhựa có vạch kẻ chỉ đặt được ở chế độ "Đặt thẳng". Đặt thẳng: bấm điểm đầu, bấm điểm cuối, bấm tiếp để nối đoạn; Esc để kết thúc.</p>
+    </div>
+    <div id="tab-placed" hidden>
+      <div id="placed-list"></div>
+      <p class="empty">Bấm một dòng để nhảy tới và làm nổi thứ đó trên map. ✕: gỡ (hoàn tác được).</p>
+    </div>
+    <div id="tab-prop" hidden>
+      <div class="modes" title="Cách đặt.">
+        <label title="Bấm lên map để đặt đúng một cái (cỡ và hình dáng ngẫu nhiên một chút cho tự nhiên)."><input type="radio" name="prop-mode" value="place" checked> Đặt từng cái</label>
+        <label title="Kéo chuột (hoặc giữ chuột yên) để rải cả vạt trong vòng tròn 'Cỡ cọ'. Giữ chuột lâu ở một chỗ thì vạt dày dần cho tới khi hết chỗ."><input type="radio" name="prop-mode" value="brush"> Vẽ rừng</label>
+      </div>
+      <label class="row" title="Nhóm cây và vật thể.">Nhóm
+        <select id="prop-group"></select></label>
+      <div id="prop-list" class="list tall"></div>
+      <p id="prop-current" class="empty">Chưa chọn loại nào.</p>
+      <label class="row" id="prop-variant-row" hidden title="Dạng của loại đang chọn.">Dạng
+        <select id="prop-variant"></select></label>
+      <label class="row" title="Cỡ cây hoặc vật thể. Ngẫu nhiên: mỗi cái một cỡ khác nhau trông tự nhiên hơn.">Cỡ
+        <select id="prop-size"></select></label>
+      <label class="row" title="Chỉ dùng khi 'Vẽ rừng': rải lẫn nhiều loại theo tỉ lệ có sẵn (rừng thông, rừng sồi, chiến trường...). Chọn 'Chỉ loại đang chọn' để rải đúng loại ở trên.">Hỗn hợp
+        <select id="prop-mix"></select></label>
+      <label class="row" title="Chỉ dùng khi 'Vẽ rừng': số càng lớn thì các cây càng cách xa nhau (thưa). Số nhỏ thì mọc sát, rậm.">Độ thưa
+        <input id="prop-space" type="number" min="1" max="10" value="4"></label>
+      <div class="btnrow">
+        <button id="prop-clear" title="Gỡ toàn bộ cây và vật thể đã đặt (có thể hoàn tác).">Gỡ hết cây và vật thể</button>
+      </div>
+      <p id="prop-total" class="empty"></p>
+      <p class="empty">Cây và vật thể chỉ thành khối thật khi xuất world, nên đặt trước hay sau khi sửa địa hình đều được: cây tự đứng theo mặt đất mới. Cây không mọc dưới nước hay bên trong công trình. Giữ Shift (hiện vòng tròn theo "Cỡ cọ") rồi bấm hoặc kéo để gỡ.</p>
+    </div>
+    <div id="tab-players" hidden>
+      <label class="row" title="Tên kịch bản, ghi vào aoe2_scenario.json.">Tên kịch bản
+        <input id="sc-name" type="text" maxlength="60"></label>
+      <label class="check" title="Bật: kịch bản chơi với sương mù chiến tranh (tầm nhìn của quân và công trình). Tắt: thấy hết map.">
+        <input id="sc-fog" type="checkbox" checked> Sương mù chiến tranh</label>
+      <div id="sc-players"></div>
+      <p class="empty">Gán đơn vị vào ô ở bảng [Mob] (nhóm "Đơn vị mod AoE2", mục "Ô người chơi"). Khi xuất world, chương trình ghi thêm aoe2_scenario.json cạnh level.dat; mod đọc tệp đó khi bắt đầu ván.</p>
+      <p id="sc-warn" class="empty"></p>
+    </div>
+    <div id="tab-mob" hidden>
+      <label class="row" title="Nhóm mob. 'Của tôi' là các mẫu bạn tự lưu, ví dụ mob của mod.">Nhóm
+        <select id="mob-group"></select></label>
+      <div id="mob-list" class="list"></div>
+      <details id="mob-custom">
+        <summary title="Dùng cho mob của mod (Recruits, Flan...) hoặc mob có trang bị riêng.">Mob tuỳ chỉnh (mod)</summary>
+        <label class="col" title="ID của mob, dạng tênmod:tênmob. Trong game gõ /summon rồi nhấn Tab để xem danh sách ID.">ID mob
+          <input id="mob-id" type="text" placeholder="vd: recruits:recruit" spellcheck="false"></label>
+        <label class="col" title="NBT thêm (không bắt buộc). Cách lấy: trong game nhìn vào mob rồi gõ /data get entity @e[limit=1,sort=nearest] và chép phần cần dùng, hoặc tự gõ như {Tags:[&quot;doi1&quot;]}.">NBT thêm (không bắt buộc)
+          <textarea id="mob-nbt" rows="4" placeholder='vd: {Tags:["doi1"]}' spellcheck="false"></textarea></label>
+        <label class="col" title="Tên để lưu mẫu này vào nhóm 'Của tôi'.">Tên mẫu
+          <input id="mob-name" type="text" placeholder="vd: Lính Recruits đội 1"></label>
+        <div class="btnrow">
+          <button id="mob-use" title="Dùng mob này để đặt lên map.">Dùng</button>
+          <button id="mob-save" title="Lưu vào nhóm 'Của tôi' để lần sau dùng lại.">Lưu mẫu</button>
+          <button id="mob-del" title="Xoá mẫu đang chọn trong nhóm 'Của tôi'.">Xoá mẫu</button>
+        </div>
+      </details>
+      <p id="mob-current" class="empty">Chưa chọn mob.</p>
+      <label class="row" title="Mob/đơn vị đặt ra thuộc ô người chơi nào (cấu hình ở bảng [Người chơi]). Gaia là trung lập, không thuộc phe nào. Chỉ đơn vị của mod AoE2 mới hiểu ô này.">Ô người chơi
+        <select id="mob-slot"></select></label>
+      <label class="row" title="Số mob đặt mỗi lần bấm.">Số lượng
+        <input id="mob-count" type="number" min="1" max="200" value="1"></label>
+      <label class="row" title="Cách xếp khi đặt nhiều mob. Hàng ngang và khối hàng quay mặt theo hướng hiện tại.">Đội hình
+        <select id="mob-form">
+          <option value="grid">Khối hàng</option>
+          <option value="line">Hàng ngang</option>
+          <option value="scatter">Rải ngẫu nhiên</option>
+        </select></label>
+      <label class="row" title="Khoảng cách giữa hai mob cạnh nhau, tính bằng khối.">Khoảng cách
+        <input id="mob-space" type="number" min="1" max="10" value="2"></label>
+      <label class="row" title="Cộng thêm độ cao chân đứng (khối). Dùng khi muốn mob đứng trên bệ, mái hoặc trong nước sâu.">Độ cao thêm
+        <input id="mob-dy" type="number" min="-20" max="60" value="0"></label>
+      <label class="check" title="Bật: mob đứng yên, không di chuyển, không tấn công. Tiện cho cảnh dàn quân. Tắt: mob hoạt động bình thường.">
+        <input id="mob-noai" type="checkbox"> Đứng yên (NoAI)</label>
+      <label class="check" title="Bật: mob không bị biến mất khi người chơi đi xa. Nên để bật.">
+        <input id="mob-persist" type="checkbox" checked> Không biến mất</label>
+      <label class="check" title="Bật: mob đứng trên sàn hang bên dưới chỗ bấm (hang đào tay, hang tự sinh hoặc lối dốc xuống hang). Chỗ nào bên dưới không có hang thì mob đứng trên mặt đất như thường.">
+        <input id="mob-cave" type="checkbox"> Đặt trong hang</label>
+      <div class="btnrow">
+        <button id="mob-clear" title="Gỡ toàn bộ mob đã đặt trên map (có thể hoàn tác).">Gỡ hết mob</button>
+      </div>
+      <p id="mob-total" class="empty"></p>
+      <p class="empty">R: xoay hướng mặt (45 độ) · Giữ Shift hiện vòng tròn theo "Cỡ cọ", Shift + bấm gỡ các mob trong vòng tròn. Mob mod chỉ hiện đúng khi mở world có cài mod đó.</p>
+    </div>
+    <details class="sec">
+    <summary title="Chỉnh cách chương trình tự chọn khối bề mặt: đá ở sườn dốc, tuyết trên cao, độ dày lớp đất.">Quy tắc block tự động</summary>
+    <label class="rule" title="Sườn dốc từ mức này trở lên sẽ lộ đá thay vì cỏ. Số nhỏ = nhiều đá hơn.">Dốc ra đá
+      <input id="rule-slope" type="range" min="1" max="6" step="1" value="2"><output id="rule-slope-out">2</output></label>
+    <label class="rule" title="Từ độ cao này trở lên mặt đất phủ tuyết. Kéo hết sang phải để tắt tuyết.">Tuyết từ y
+      <input id="rule-snow" type="range" min="70" max="301" step="1" value="170"><output id="rule-snow-out">170</output></label>
+    <label class="rule" title="Số lớp đất nằm dưới mặt trước khi tới đá.">Lớp đất dày
+      <input id="rule-dirt" type="range" min="0" max="8" step="1" value="3"><output id="rule-dirt-out">3</output></label>
+    </details>
+    <details class="sec">
+    <summary title="Thông số cho hang tự sinh trong vùng đánh dấu bằng công cụ Vùng hang.">Hang tự sinh</summary>
+    <label class="rule" title="Hang nhiều hay ít trong vùng đã đánh dấu bằng công cụ 'Vùng hang'. 1 = thưa, 10 = chi chít.">Mật độ hang
+      <input id="cave-density" type="range" min="1" max="10" step="1" value="5"><output id="cave-density-out">5</output></label>
+    <label class="rule" title="Đường hầm và khoang hang to hay nhỏ. 1 = hầm hẹp, 10 = hang rộng.">Cỡ hang
+      <input id="cave-size" type="range" min="1" max="10" step="1" value="5"><output id="cave-size-out">5</output></label>
+    <button id="cave-seed" class="wide" title="Đổi sang một kiểu hang ngẫu nhiên khác (cùng vùng đánh dấu, hình dạng hang khác). Hình dạng hang chỉ thấy được trong game sau khi xuất world.">Đổi kiểu hang ngẫu nhiên</button>
+    <p class="empty">Hang tự sinh chỉ có trong vùng tô tím (công cụ "Vùng hang") và chỉ thấy hình dạng thật trong game.</p>
+    </details>
+    <details class="sec">
+    <summary title="Chuột và phím tắt.">Cách điều khiển</summary>
+    <ul class="keys">
+      <li><b>Chuột trái</b> kéo: vẽ bằng cọ</li>
+      <li><b>Chuột phải</b> kéo: di chuyển khung nhìn</li>
+      <li><b>Lăn chuột</b>: phóng to, thu nhỏ</li>
+      <li><b>W A S D</b> hoặc mũi tên: di chuyển</li>
+      <li><b>Shift</b>: đảo chiều cọ nâng/hạ</li>
+      <li><b>[ ]</b>: đổi cỡ cọ</li>
+    </ul>
+    </details>
+  </aside>
+</main>
+
+<footer id="status">
+  <span id="st-pos">Toạ độ: -</span>
+  <span id="st-map"></span>
+  <span id="st-zoom"></span>
+  <span id="st-msg"></span>
+</footer>
+
+<dialog id="dlg-new">
+  <form method="dialog">
+    <h2>Map mới</h2>
+    <label>Kích thước (khối)
+      <select id="new-size"><option>256</option><option>512</option><option selected>1024</option><option>1536</option><option>2048</option></select></label>
+    <label>Độ cao nền (y)
+      <input id="new-height" type="number" min="-50" max="250" value="64"></label>
+    <label>Biome nền
+      <select id="new-biome"></select></label>
+    <p class="note">Map hiện tại sẽ bị thay. Hãy lưu trước nếu cần.</p>
+    <menu><button value="cancel">Huỷ</button><button value="ok" class="primary">Tạo map</button></menu>
+  </form>
+</dialog>
+
+<dialog id="dlg-export">
+  <form method="dialog">
+    <h2>Xuất world 1.20.1</h2>
+    <label>Tên thế giới
+      <input id="exp-name" type="text" value="Map mới" maxlength="60"></label>
+    <label>World border (khối; kéo bằng công cụ World border trong Editor)
+      <input id="exp-border" type="number" min="16" max="60000" value="1024"></label>
+    <label>Biome nền
+      <select id="exp-biome"></select></label>
+    <label title="Thêm một vành địa hình bên ngoài mép map (ngoài world border) để khi quay phim không thấy khoảng trống. Núi: dãy núi bao quanh. Biển: nước tới tận chân trời.">Viền ngoài map
+      <select id="exp-rim"><option value="none">Không (khoảng trống)</option><option value="mountain">Núi bao quanh</option><option value="sea">Biển bao quanh</option></select></label>
+    <label title="Vành ngoài rộng bao nhiêu khối tính từ mép map. Rộng hơn thì xuất lâu hơn.">Bề rộng viền (khối)
+      <select id="exp-rim-width"><option>48</option><option selected>96</option><option>160</option><option>256</option></select></label>
+    <label class="check"><input id="exp-mobs" type="checkbox"> Cho quái tự sinh (mặc định tắt để quay phim)</label>
+    <p class="note">Bước tiếp theo bạn sẽ chọn thư mục <b>saves</b> của Minecraft.</p>
+    <menu><button value="cancel">Huỷ</button><button value="ok" class="primary">Chọn thư mục và xuất</button></menu>
+  </form>
+</dialog>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
