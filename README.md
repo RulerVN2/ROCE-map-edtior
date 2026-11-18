@@ -34,3 +34,10 @@ Mở: `npm install` rồi `npm start`. Đóng gói .exe (Windows): `npm run pack
 Tab **[Người chơi]**: 8 ô như AoE2 Scenario Editor (văn minh, màu, phe, tài nguyên, thời đại, sương mù).
 Tab **[Kịch bản]** + công cụ **[Vùng]**: vẽ vùng, đội mẫu (TaskForce), AI cho ô không người chơi, trigger (điều kiện → hành động).
 Xuất world sẽ ghi thêm `aoe2_scenario.json` (version 2) cạnh `level.dat`; mod v466 trở lên đọc tệp này. Chi tiết trường dữ liệu: `src/core/scenario.js`.
+
+### Điểm bắt đầu kiểu AoE2 (v3)
+Trong tab **[Mob]** có nhóm **Công trình và vật giữ chỗ (AoE2)**:
+- **Công trình (đặt sẵn):** chọn công trình, chọn "Ô người chơi", bấm đặt (R để xoay). Khi ván bắt đầu, mod dựng xong sẵn, miễn phí. Trên bản đồ vẽ đúng hình nền công trình theo màu của ô.
+- **Vật giữ chỗ (vô hình):** ô có vật này không bị loại khi hết công trình quan trọng; nếu ô không có gì khác thì camera bắt đầu ở đây.
+- Camera của người chơi bắt đầu ở: Town Center đầu tiên của ô, nếu không có thì công trình đầu tiên, rồi quân đầu tiên, rồi vật giữ chỗ.
+Các vật này không thành entity trong thế giới, chỉ đi vào `aoe2_scenario.json` (`buildings`, `placeholders`, `players[].start`).

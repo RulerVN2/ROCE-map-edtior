@@ -1115,7 +1115,7 @@ function frame(now) {
     view.mobs = terrain.mobs;
     view.props = terrain.props;
     view.propGhost = cell && state.tool === 'prop' && state.propMode === 'place' && !state.shift && state.propSel ? { k: state.propSel, x: cell.x, z: cell.z, sc: 1, s: 1 } : null;
-    view.mobGhost = cell && state.tool === 'mob' && !state.shift && state.mobSel ? { points: mobPoints(cell), yaw: state.mobYaw, style: mobStyle({ id: state.mobSel.id, label: state.mobSel.name }) } : null;
+    view.mobGhost = cell && state.tool === 'mob' && !state.shift && state.mobSel ? { points: mobPoints(cell), yaw: state.mobYaw, id: state.mobSel.id, style: mobStyle({ id: state.mobSel.id, label: state.mobSel.name }) } : null;
     // Thứ đang nằm dưới con trỏ: làm nổi và hiện tên.
     let tipText = '';
     view.hi = focus?.hi ?? null; view.hiGroup = focus?.group ?? null;

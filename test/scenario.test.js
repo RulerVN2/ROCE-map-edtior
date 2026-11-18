@@ -72,7 +72,7 @@ test('v2: vùng, đội mẫu, AI, trigger được chuẩn hoá và xuất ra J
     actions: [{ type: 'createTeam', slot: 2, taskforce: 'tf1', zone: 'z1', team: 'doi1' }, { type: 'teamOrder', team: 'doi1', order: 'attack', zone: 'z1' }, { type: 'xyz' }],
   });
   const j = scenarioJson(s, []);
-  assert.equal(j.version, 2);
+  assert.equal(j.version, 3);
   assert.deepEqual(j.zones, [{ id: 'z1', name: 'Cổng', x0: 10, x1: 50, z0: 20, z1: 40 }]);   // trùng id và id sai bị bỏ, toạ độ được sắp lại
   assert.deepEqual(j.taskforces[0].units, [{ unit: 'militia', count: 6 }, { unit: 'archer', count: 200 }]);
   assert.equal(j.ai[1].cheatRate, 10000);
@@ -113,4 +113,63 @@ test('v2: dự án lưu và mở lại giữ nguyên trigger', () => {
   assert.equal(back.triggers[0].conditions[0].seconds, 90);
   assert.equal(back.triggers[0].actions[0].text, 'xin chào');
   assert.equal(back.zones[0].x1, 3);
+});
+
+test('v3: công trình đặt sẵn, vật giữ chỗ và điểm bắt đầu của từng ô', () => {
+  const sc = defaultScenario();
+  const mobs = [
+    makeMob({ id: 'aoe2:villager', x: 10.5, z: 10.5, slot: 1 }),
+    makeMob({ id: 'aoe2b:barracks', x: 30.5, z: 40.5, slot: 1, yaw: 90 }),
+    makeMob({ id: 'aoe2b:town_center', x: 50.5, z: 60.5, slot: 1 }),
+    makeMob({ id: 'aoe2p:placeholder', x: 5.5, z: 6.5, slot: 2 }),
+    makeMob({ id: 'minecraft:sheep', x: 1.5, z: 1.5, slot: 0 }),
+  ];
+  const j = scenarioJson(sc, mobs);
+  assert.deepEqual(j.buildings.map((b) => [b.slot, b.building, b.x, b.z, b.rot]), [[1, 'barracks', 30, 40, 1], [1, 'town_center', 50, 60, 0]]);
+  assert.deepEqual(j.placeholders, [{ slot: 2, x: 5, z: 6 }]);
+  assert.equal(j.players[0].units, 1);                         // công trình và vật giữ chỗ không tính là quân
+  assert.equal(j.gaiaUnits, 1);
+  assert.deepEqual(j.players[0].start, { x: 50, z: 60, kind: 'town_center' });   // Town Center đầu tiên được ưu tiên
+  assert.deepEqual(j.players[1].start, { x: 5, z: 6, kind: 'placeholder' });
+  assert.equal(j.players[2].start, null);
+  // không thành entity trong thế giới
+  const ents = mobsToEntities(mobs, () => 64);
+  assert.deepEqual(ents.map((e) => e.id).sort(), ['aoe2:villager', 'minecraft:sheep']);
+});
+
+test('v3: điểm bắt đầu khi ô chỉ có công trình khác hoặc chỉ có quân', () => {
+  const j = scenarioJson(defaultScenario(), [
+    makeMob({ id: 'aoe2b:house', x: 20.5, z: 21.5, slot: 1 }), makeMob({ id: 'aoe2:militia', x: 1.5, z: 2.5, slot: 1 }),
+    makeMob({ id: 'aoe2:archer', x: 8.5, z: 9.5, slot: 2 }),
+  ]);
+  assert.deepEqual(j.players[0].start, { x: 20, z: 21, kind: 'building' });
+  assert.deepEqual(j.players[1].start, { x: 8, z: 9, kind: 'unit' });
+});
+
+test('v3: cảnh báo công trình chưa gán ô, đè nhau, vật giữ chỗ chưa gán ô', () => {
+  const w = scenarioWarnings(defaultScenario(), [
+    makeMob({ id: 'aoe2b:town_center', x: 30.5, z: 30.5, slot: 0 }),
+    makeMob({ id: 'aoe2b:barracks', x: 50.5, z: 50.5, slot: 1 }), makeMob({ id: 'aoe2b:house', x: 52.5, z: 50.5, slot: 1 }),
+    makeMob({ id: 'aoe2p:placeholder', x: 3.5, z: 3.5, slot: 0 }),
+  ]);
+  assert.ok(w.some((t) => t.includes('chưa gán ô người chơi (Gaia')));
+  assert.ok(w.some((t) => t.includes('đè lên nhau')));
+  assert.ok(w.some((t) => t.includes('vật giữ chỗ chưa gán')));
+});
+
+test('v3: danh mục có công trình đặt sẵn và vật giữ chỗ (nhóm 5)', () => {
+  assert.ok(MOB_CATALOG.some((m) => m.group === 5 && m.id === 'aoe2b:town_center'));
+  assert.ok(MOB_CATALOG.some((m) => m.group === 5 && m.id === 'aoe2p:placeholder'));
+  for (const m of MOB_CATALOG.filter((x) => x.group === 5)) assert.equal(checkMobSpec(m.id, m.snbt), null);
+});
+
+test('v3: hình chữ nhật nền của công trình khớp BuildingPlacement của mod (kể cả khi xoay)', async () => {
+  const { footprintRect } = await import('../src/core/scenario.js');
+  // Town Center 11x11: gốc ở ô giữa, nền trải 5 ô mỗi phía
+  assert.deepEqual(footprintRect('town_center', 50, 60, 0), [45, 55, 56, 66]);
+  // Barracks 9x11 (rộng x sâu): không xoay chiếm x 46..54, z 55..65; xoay 90 độ thì đổi chiều
+  assert.deepEqual(footprintRect('barracks', 50, 60, 0), [46, 55, 55, 66]);
+  assert.deepEqual(footprintRect('barracks', 50, 60, 1), [45, 56, 56, 65]);
+  assert.deepEqual(footprintRect('barracks', 50, 60, 2), [46, 55, 55, 66]);
+  assert.deepEqual(footprintRect('house', 10, 10, 0), [8, 8, 12, 12]);      // chẵn: lệch một ô về phía gốc như worldPos
 });

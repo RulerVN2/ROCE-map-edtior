@@ -99,6 +99,33 @@ export const BUILDINGS = [
   ['xenon_hospital', 'Xenon Hospital'], ['palisade_wall', 'Palisade Wall'], ['stone_wall', 'Stone Wall'], ['fortified_wall', 'Fortified Wall'],
   ['palisade_gate', 'Palisade Gate'], ['stone_gate', 'Stone Gate'],
 ];
+/** Kích thước nền [rộng, sâu] của từng công trình (khối) khi chưa xoay; khớp với enum Building của mod. */
+export const BUILDING_DIMS = {
+  town_center: [11, 11], house: [4, 4], lumber_camp: [5, 5], mining_camp: [5, 5], mill: [5, 5], barracks: [9, 11], archery_range: [11, 9], stable: [9, 7],
+  siege_workshop: [15, 13], blacksmith: [9, 11], market: [15, 11], monastery: [15, 13], university: [15, 13], castle: [19, 19], watch_tower: [7, 7],
+  guard_tower: [7, 7], keep: [9, 9], bombard_tower: [7, 7], dock: [11, 13], xenon_hospital: [13, 13], palisade_wall: [2, 2], stone_wall: [2, 2],
+  fortified_wall: [2, 2], palisade_gate: [8, 2], stone_gate: [8, 2],
+};
+/** Id đặc biệt của "mob" chỉ có ở editor: công trình đặt sẵn và vật giữ chỗ (không thành entity trong thế giới). */
+export const BUILDING_PREFIX = 'aoe2b:';
+export const PLACEHOLDER_ID = 'aoe2p:placeholder';
+export const isPlacedBuilding = (m) => typeof m?.id === 'string' && m.id.startsWith(BUILDING_PREFIX);
+export const isPlaceholder = (m) => m?.id === PLACEHOLDER_ID;
+export const isScenarioObject = (m) => isPlacedBuilding(m) || isPlaceholder(m);
+/** Xoay (0..3) từ góc yaw của mob. */
+export const rotOf = (yaw) => ((Math.round((yaw || 0) / 90) % 4) + 4) % 4;
+
+/** Hình chữ nhật nền [x0, z0, x1, z1] (cạnh khối, x1/z1 là cạnh ngoài) của công trình đặt ở ô gốc (ox, oz) với xoay rot 0..3; khớp BuildingPlacement.worldPos của mod. */
+export function footprintRect(building, ox, oz, rot) {
+  const [w, d] = BUILDING_DIMS[building] ?? [1, 1];
+  const at = (lx, lz) => {
+    const rx = lx - (w >> 1), rz = lz - (d >> 1);
+    return rot === 1 ? [-rz, rx] : rot === 2 ? [-rx, -rz] : rot === 3 ? [rz, -rx] : [rx, rz];
+  };
+  const [ax, az] = at(0, 0), [cx, cz] = at(w - 1, d - 1);
+  return [ox + Math.min(ax, cx), oz + Math.min(az, cz), ox + Math.max(ax, cx) + 1, oz + Math.max(az, cz) + 1];
+}
+
 export const RES = [['food', 'Thức ăn'], ['wood', 'Gỗ'], ['gold', 'Vàng'], ['stone', 'Đá']];
 export const OPS = ['>=', '<=', '==', '>', '<', '!='];
 export const DIFFICULTIES = ['Dễ', 'Thường', 'Khó'];
@@ -223,14 +250,29 @@ export function normalizeScenario(s) {
 export function scenarioJson(sc, mobs = []) {
   const s = normalizeScenario(sc);
   const count = new Array(MAX_PLAYERS + 1).fill(0);
-  for (const m of mobs) { const k = m.slot | 0; if (k >= 0 && k <= MAX_PLAYERS) count[k]++; }
+  const buildings = [], placeholders = [], firstUnit = {}, firstBuilding = {}, firstTc = {}, firstPh = {};
+  for (const m of mobs) {
+    const k = m.slot | 0; if (k < 0 || k > MAX_PLAYERS) continue;
+    const at = { x: Math.floor(m.x), z: Math.floor(m.z) };
+    if (isPlacedBuilding(m)) {
+      const b = { slot: k, building: m.id.slice(BUILDING_PREFIX.length), ...at, rot: rotOf(m.yaw) };
+      buildings.push(b);
+      if (k > 0) { firstBuilding[k] ??= at; if (b.building === 'town_center') firstTc[k] ??= at; }
+    } else if (isPlaceholder(m)) {
+      placeholders.push({ slot: k, ...at });
+      if (k > 0) firstPh[k] ??= at;
+    } else { count[k]++; if (k > 0) firstUnit[k] ??= at; }
+  }
+  const startOf = (k) => (firstTc[k] ? { ...firstTc[k], kind: 'town_center' } : firstBuilding[k] ? { ...firstBuilding[k], kind: 'building' }
+    : firstUnit[k] ? { ...firstUnit[k], kind: 'unit' } : firstPh[k] ? { ...firstPh[k], kind: 'placeholder' } : null);
   return {
-    format: 'aoe2-scenario', version: 2, name: s.name, fog: s.fog, difficulty: s.difficulty,
+    format: 'aoe2-scenario', version: 3, name: s.name, fog: s.fog, difficulty: s.difficulty,
     players: s.players.map((p, i) => ({
       slot: i + 1, active: p.active, civ: p.civ, color: p.color, team: p.team, age: p.age,
-      resources: { food: p.food, wood: p.wood, gold: p.gold, stone: p.stone }, units: count[i + 1],
+      resources: { food: p.food, wood: p.wood, gold: p.gold, stone: p.stone }, units: count[i + 1], start: startOf(i + 1),
     })),
     gaiaUnits: count[0],
+    buildings, placeholders,
     zones: s.zones,
     taskforces: s.taskforces,
     ai: s.ai.map((a, i) => ({ slot: i + 1, ...a })),
@@ -246,6 +288,14 @@ export function scenarioWarnings(sc, mobs = []) {
   const orphan = new Set();
   for (const m of mobs) { const k = m.slot | 0; if (k > 0 && !s.players[k - 1]?.active) orphan.add(k); }
   for (const k of [...orphan].sort()) out.push(`Ô ${k} đang tắt nhưng vẫn có đơn vị gán cho nó.`);
+  const placed = mobs.filter(isPlacedBuilding);
+  if (placed.some((m) => !(m.slot | 0))) out.push('Có công trình đặt sẵn chưa gán ô người chơi (Gaia không sở hữu công trình).');
+  const rects = placed.filter((m) => (m.slot | 0) > 0).map((m) => ({ m, r: footprintRect(m.id.slice(BUILDING_PREFIX.length), Math.floor(m.x), Math.floor(m.z), rotOf(m.yaw)) }));
+  for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) {
+    const a = rects[i].r, b = rects[j].r;
+    if (a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]) out.push(`Hai công trình đặt sẵn đè lên nhau quanh (${Math.floor(rects[i].m.x)}, ${Math.floor(rects[i].m.z)}).`);
+  }
+  for (const m of mobs.filter(isPlaceholder)) if (!(m.slot | 0)) out.push('Có vật giữ chỗ chưa gán ô người chơi.');
   const zones = new Set(s.zones.map((z) => z.id)), tfs = new Set(s.taskforces.map((t) => t.id)), trs = new Set(s.triggers.map((t) => t.id));
   const teams = new Set();
   for (const t of s.triggers) for (const a of t.actions) if (a.type === 'createTeam' && a.team) teams.add(a.team);

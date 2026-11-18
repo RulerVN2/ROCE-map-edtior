@@ -4,6 +4,7 @@ import { PROP_BY_KEY, propBlocks } from '../../core/props.js';
 import { modelFor, modelTextures, buildFaces, armorOf, armorLayers, heldOf, horseArmorLayer } from '../../core/mobmodels.js';
 import { blockColor, parseState, shapeOf, SHAPE } from '../../core/structure.js';
 import { mobStyle, mobGroups, mobGroupKey } from '../../core/mobs.js';
+import { BUILDING_PREFIX, footprintRect, rotOf } from '../../core/scenario.js';
 
 const ZOOMS = [0.5, 1, 2, 3, 4, 6, 8, 12, 16, 24];
 const REF_H = 64;
@@ -674,12 +675,28 @@ export class IsoView {
       const { px, py } = this.project(m.x, h + 1, m.z);
       if (px < -20 || py < -20 || px > this.W + 20 || py > this.H + 20) return;
       const hot = key !== null && key === this.hiGroup;
+      if (typeof m.id === 'string' && m.id.startsWith(BUILDING_PREFIX)) { this.drawBuildingMark(m, h, style, alpha, hot); if (i >= 0) this.mobScreen.push({ px, py, r, m, i, key }); return; }
       if (!(this._modeled && this._modeled.has(m)) || hot) this.drawMarker(px, py, r, m.yaw, style, alpha, hot);
       if (i >= 0) this.mobScreen.push({ px, py, r, m, i, key });
     };
     this.mobs.forEach((m, i) => one(m, i, mobStyle(m), 1, mobGroupKey(m, i)));
     const g = this.mobGhost;
-    if (g) for (const p of g.points) one({ x: p.x, z: p.z, yaw: g.yaw }, -1, g.style, 0.6, null);
+    if (g) for (const p of g.points) one({ x: p.x, z: p.z, yaw: g.yaw, id: g.id }, -1, g.style, 0.6, null);
+  }
+  /** Công trình đặt sẵn: vẽ đúng hình chữ nhật nền (đã xoay) theo màu ô người chơi, có dấu cửa ở cạnh trước. */
+  drawBuildingMark(m, h, style, alpha, hot) {
+    const c = this.ctx, rot = rotOf(m.yaw), name = m.id.slice(BUILDING_PREFIX.length);
+    const [x0, z0, x1, z1] = footprintRect(name, Math.floor(m.x), Math.floor(m.z), rot);
+    const P = [this.project(x0, h + 1, z0), this.project(x1, h + 1, z0), this.project(x1, h + 1, z1), this.project(x0, h + 1, z1)];
+    c.globalAlpha = alpha; c.lineJoin = 'round';
+    c.beginPath(); P.forEach((q, k) => (k ? c.lineTo(q.px, q.py) : c.moveTo(q.px, q.py))); c.closePath();
+    c.fillStyle = style.color; c.globalAlpha = 0.45 * alpha; c.fill(); c.globalAlpha = alpha;
+    c.strokeStyle = 'rgba(0,0,0,.9)'; c.lineWidth = hot ? 4 : 3; c.stroke();
+    c.strokeStyle = hot ? '#ffd640' : '#fff'; c.lineWidth = 1.5; c.stroke();
+    const q = this.project(m.x, h + 1, m.z), a = (m.yaw * Math.PI) / 180, fx = -Math.sin(a), fz = Math.cos(a), len = Math.max(6, this.scale * 2.5);
+    c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.moveTo(q.px, q.py); c.lineTo(q.px + (fx - fz) * len, q.py + (fx + fz) * len * 0.5); c.stroke();
+    c.beginPath(); c.arc(q.px, q.py, 3, 0, Math.PI * 2); c.fillStyle = '#fff'; c.fill();
+    c.globalAlpha = 1;
   }
   /** Một biểu tượng mob: hình theo loại, viền trắng, vạch chỉ hướng mặt (yaw Minecraft: 0 = nam, 90 = tây). */
   drawMarker(px, py, r, yaw, style, alpha, hot) {

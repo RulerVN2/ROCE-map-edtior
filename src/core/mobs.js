@@ -1,7 +1,7 @@
 // Mob (sinh vật) đặt trên map: danh sách mẫu có sẵn, xếp đội hình, kiểm tra dữ liệu và tạo entity khi xuất.
 import * as nbt from './nbt-tags.js';
 import { parseSnbt } from './snbt.js';
-import { MOD_UNITS, COLORS } from './scenario.js';
+import { MOD_UNITS, COLORS, BUILDINGS, BUILDING_PREFIX, PLACEHOLDER_ID, isScenarioObject } from './scenario.js';
 
 const item = (id) => `{id:"minecraft:${id}",Count:1b}`;
 const gear = (boots, legs, chest, head, main, off) =>
@@ -11,7 +11,7 @@ const GOLD = ['golden_boots', 'golden_leggings', 'golden_chestplate', 'golden_he
 const DIAMOND = ['diamond_boots', 'diamond_leggings', 'diamond_chestplate', 'diamond_helmet'];
 const LEATHER = ['leather_boots', 'leather_leggings', 'leather_chestplate', 'leather_helmet'];
 
-export const MOB_GROUPS = ['Lính (có giáp)', 'Quái vật', 'Dân và vật nuôi', 'Khác', 'Đơn vị mod AoE2'];
+export const MOB_GROUPS = ['Lính (có giáp)', 'Quái vật', 'Dân và vật nuôi', 'Khác', 'Đơn vị mod AoE2', 'Công trình và vật giữ chỗ (AoE2)'];
 
 /** Mẫu mob có sẵn. snbt: các tag thêm vào entity. */
 export const MOB_CATALOG = [
@@ -49,6 +49,9 @@ export const MOB_CATALOG = [
 
   // Đơn vị của mod Rise of Cubic Empire (entity aoe2:<id>). Gán ô người chơi ở bảng [Người chơi] để chia phe.
   ...MOD_UNITS.map(([id, name]) => ({ key: 'aoe2_' + id, group: 4, name, id: 'aoe2:' + id, snbt: '', tip: `aoe2:${id}. Chọn "Ô người chơi" bên dưới để đơn vị thuộc về một phe.` })),
+  // Chỉ có trong editor (không thành entity): mod dựng công trình xong sẵn khi ván bắt đầu, và vật giữ chỗ chống bị loại.
+  ...BUILDINGS.map(([id, name]) => ({ key: 'aoeb_' + id, group: 5, name: name + ' (đặt sẵn)', id: BUILDING_PREFIX + id, snbt: '', tip: 'Công trình dựng xong sẵn khi ván bắt đầu. Bắt buộc chọn "Ô người chơi". Town Center đầu tiên của ô sẽ là nơi camera bắt đầu. R để xoay.' })),
+  { key: 'aoep_placeholder', group: 5, name: 'Vật giữ chỗ (vô hình)', id: PLACEHOLDER_ID, snbt: '', tip: 'Vật vô hình như AoE2: ô có vật này sẽ không bị loại khi hết công trình quan trọng. Nếu ô không có gì khác, camera bắt đầu ở đây.' },
 ];
 
 const ID_RE = /^[a-z0-9_.-]+:[a-z0-9_./-]+$/;
@@ -116,6 +119,7 @@ export function makeMob({ id, snbt = '', x, z, yaw = 0, noAI = false, persist = 
 export function mobsToEntities(mobs, groundY) {
   const out = [];
   for (const m of mobs) {
+    if (isScenarioObject(m)) continue;                       // công trình đặt sẵn và vật giữ chỗ chỉ đi vào aoe2_scenario.json
     const extra = {};
     if (m.noAI) extra.NoAI = nbt.byte(1);
     if (m.persist) extra.PersistenceRequired = nbt.byte(1);
@@ -136,7 +140,7 @@ const CATALOG_COLORS = {
   villager: '#c98a5a', horse: '#a0522d', horse_armor: '#d9d9d9', cow: '#5c4033', sheep: '#ffffff', pig: '#f4a3b4', chicken: '#fff1a8', wolf: '#bfc5cc',
   boat: '#b8935a', minecart: '#8d99a6', stand: '#d2b48c',
 };
-const SHAPES = ['shield', 'triangle', 'circle', 'diamond']; // theo nhóm trong MOB_GROUPS
+const SHAPES = ['shield', 'triangle', 'circle', 'diamond', 'star', 'diamond']; // theo nhóm trong MOB_GROUPS
 const byLabel = new Map(MOB_CATALOG.map((m) => [m.name + '|' + m.id, m]));
 
 /**
