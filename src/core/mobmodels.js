@@ -200,7 +200,7 @@ const AOE_CACHE = new Map();
 function aoeModel(name) {
   const tex = name === 'villager' ? 'aoe2/villager' : AOE_UNIT_SKINS.has(name) ? 'aoe2/unit/' + name : null;
   if (!tex) return null;
-  if (!AOE_CACHE.has(tex)) AOE_CACHE.set(tex, { tex, parts: H(4, 4, true), humanoid: false, armRx: 0 });
+  if (!AOE_CACHE.has(tex)) AOE_CACHE.set(tex, { tex, parts: H(4, 4, true), humanoid: false, armRx: 0, scale: 1.7 });
   return AOE_CACHE.get(tex);
 }
 /** Các đường dẫn texture entity cần tải cho một mô hình. */

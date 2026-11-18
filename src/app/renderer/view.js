@@ -511,8 +511,9 @@ export class IsoView {
       let byMob = this._facesCache.get(mod); if (!byMob) { byMob = new Map(); this._facesCache.set(mod, byMob); }
       let fl = byMob.get(ck); if (!fl) { fl = buildFaces(mod, layers, held); byMob.set(ck, fl); }
       const a = ((m.yaw + (mod.yaw0 ?? 0)) * Math.PI) / 180, c = Math.cos(a), sn = Math.sin(a);
-      const pt = (v) => { const x = v[0] / 16, y = (24 - v[1]) / 16, z = -v[2] / 16; return [m.x + c * x - sn * z, feetY + y, m.z + sn * x + c * z]; };
-      const vec = (v) => { const x = v[0] / 16, y = -v[1] / 16, z = -v[2] / 16; return [c * x - sn * z, y, sn * x + c * z]; };
+      const K = mod.scale ?? 1;   // v: mô hình lính của mod phóng to cho dễ nhìn
+      const pt = (v) => { const x = K * v[0] / 16, y = K * (24 - v[1]) / 16, z = -K * v[2] / 16; return [m.x + c * x - sn * z, feetY + y, m.z + sn * x + c * z]; };
+      const vec = (v) => { const x = K * v[0] / 16, y = -K * v[1] / 16, z = -K * v[2] / 16; return [c * x - sn * z, y, sn * x + c * z]; };
       for (const f of fl) {
         if (f.fur && !fe) continue;
         const nw = vec(f.n);

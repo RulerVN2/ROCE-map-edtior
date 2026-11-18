@@ -28,7 +28,7 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
   };
   const card = (...kids) => { const c = mk('div', { className: 'sc-card' }, kids); return c; };
   const slotList = (zero) => [...(zero ? [[0, 'Gaia']] : []), ...Array.from({ length: MAX_PLAYERS }, (_, i) => [i + 1, 'Ô ' + (i + 1)])];
-  const unitList = () => [['any', 'Mọi quân'], ['villager', 'Dân làng'], ['military', 'Mọi lính'], ...MOD_UNITS.filter((u) => u[0] !== 'villager')];
+  const unitList = () => [['any', 'Mọi quân'], ['villager', 'Villager'], ['military', 'Mọi lính'], ...MOD_UNITS.filter((u) => u[0] !== 'villager')];
 
   const teamLabels = () => {
     const out = new Set();
