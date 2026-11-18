@@ -313,10 +313,18 @@ ipcMain.handle('get-textures', async (_e, names) => {
 });
 ipcMain.handle('get-entity-textures', async (_e, paths) => {
   try {
-    const idx = openTexJar();
-    if (!idx) return { none: true };
-    const png = {};
-    for (const t of paths) { const b = readTexture(idx, t); if (b) png[t] = new Uint8Array(b); }
+    const png = {}, rest = [];
+    for (const t of paths) {
+      if (t.startsWith('aoe2/')) {      // skin của mod đi kèm chương trình (assets/aoe2/...), không cần file jar của Minecraft
+        const f = path.join(here, '..', '..', 'assets', ...t.split('/')) + '.png';
+        try { if (f.startsWith(path.join(here, '..', '..', 'assets'))) png[t] = new Uint8Array(fs.readFileSync(f)); } catch { /* không có skin này */ }
+      } else rest.push(t);
+    }
+    if (rest.length) {
+      const idx = openTexJar();
+      if (!idx && !Object.keys(png).length) return { none: true };
+      if (idx) for (const t of rest) { const b = readTexture(idx, t); if (b) png[t] = new Uint8Array(b); }
+    }
     return { png };
   } catch (err) { return { error: 'Không đọc được texture mob: ' + err.message }; }
 });

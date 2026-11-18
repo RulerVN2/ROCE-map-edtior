@@ -190,7 +190,18 @@ MOB_MODELS.husk = { ...MOB_MODELS.zombie, tex: 'entity/zombie/husk' };
 
 /** Mô hình của một mob theo id ('minecraft:zombie'), hoặc null nếu chưa có (khi đó vẽ ký hiệu). */
 export function modelFor(id) {
-  return MOB_MODELS[String(id).replace('minecraft:', '')] ?? null;
+  const s = String(id);
+  if (s.startsWith('aoe2:')) return aoeModel(s.slice(5));
+  return MOB_MODELS[s.replace('minecraft:', '')] ?? null;
+}
+/** Lính và dân của mod dùng mô hình người (như zombie nhưng tay thả xuống) với skin riêng, nằm trong assets/aoe2 của chương trình. */
+const AOE_UNIT_SKINS = new Set(["arbalester", "archer", "ashigaru", "axe_raider", "bearded_axeman", "berserk", "camel_rider", "carnyx_player", "cataphract", "cavalier", "cavalry_archer", "champion", "chu_ko_nu", "crossbowman", "elite_berserk", "elite_cataphract", "elite_chu_ko_nu", "elite_fire_lancer", "elite_huskarl", "elite_longbowman", "elite_mangudai", "elite_ninja", "elite_samurai", "elite_skirmisher", "elite_steppe_lancer", "elite_throwing_axeman", "elite_varangian_guard", "elite_watchman", "elite_woad_raider", "fire_lancer", "great_axeman", "halberdier", "hand_cannoneer", "heavy_camel_rider", "heavy_cavalry_archer", "heavy_mounted_crossbowman", "highlander", "hird_bowman", "hirdman", "huo_hu_gunner", "huskarl", "hussar", "knight", "light_cavalry", "long_swordsman", "longbowman", "man_at_arms", "mangudai", "marksman_of_the_hird", "militia", "monk", "mounted_crossbowman", "ninja", "norse_bowman", "oriflamme_bearer", "paladin", "pikeman", "raider", "royal_saiones", "samurai", "scara", "scout_cavalry", "skirmisher", "smoke_bomber", "spearman", "steppe_lancer", "taiko_drummer", "throwing_axeman", "two_handed_swordsman", "varangian_guard", "war_engineer", "watchman", "woad_raider"]);
+const AOE_CACHE = new Map();
+function aoeModel(name) {
+  const tex = name === 'villager' ? 'aoe2/villager' : AOE_UNIT_SKINS.has(name) ? 'aoe2/unit/' + name : null;
+  if (!tex) return null;
+  if (!AOE_CACHE.has(tex)) AOE_CACHE.set(tex, { tex, parts: H(4, 4, true), humanoid: false, armRx: 0 });
+  return AOE_CACHE.get(tex);
 }
 /** Các đường dẫn texture entity cần tải cho một mô hình. */
 export const modelTextures = (m) => [m.tex, m.fur].filter(Boolean);

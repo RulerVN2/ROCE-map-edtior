@@ -66,6 +66,8 @@ export class IsoView {
     this.resize();
   }
   get scale() { return ZOOMS[this.zoomIdx]; }
+  /** Độ cao mặt đất (chỉ số khối trên cùng) tại ô (x, z), không tính công trình. */
+  groundY(x, z) { const n = this.terrain.size; return Math.floor(heightAt(this.terrain, Math.min(n - 1, Math.max(0, Math.floor(x))), Math.min(n - 1, Math.max(0, Math.floor(z))))); }
   setTerrain(t) {
     this.terrain = t; this.camX = t.size / 2; this.camZ = t.size / 2;
     this.structTop = new Int16Array(t.size * t.size).fill(NO_STRUCT);
@@ -690,12 +692,13 @@ export class IsoView {
     const P = [this.project(x0, h + 1, z0), this.project(x1, h + 1, z0), this.project(x1, h + 1, z1), this.project(x0, h + 1, z1)];
     c.globalAlpha = alpha; c.lineJoin = 'round';
     c.beginPath(); P.forEach((q, k) => (k ? c.lineTo(q.px, q.py) : c.moveTo(q.px, q.py))); c.closePath();
-    c.fillStyle = style.color; c.globalAlpha = 0.45 * alpha; c.fill(); c.globalAlpha = alpha;
+    if (!this.modelBuildings?.has(name)) { c.fillStyle = style.color; c.globalAlpha = 0.45 * alpha; c.fill(); c.globalAlpha = alpha; }
     c.strokeStyle = 'rgba(0,0,0,.9)'; c.lineWidth = hot ? 4 : 3; c.stroke();
-    c.strokeStyle = hot ? '#ffd640' : '#fff'; c.lineWidth = 1.5; c.stroke();
+    c.strokeStyle = hot ? '#ffd640' : (this.modelBuildings?.has(name) ? style.color : '#fff'); c.lineWidth = 1.5; c.stroke();
     const q = this.project(m.x, h + 1, m.z), a = (m.yaw * Math.PI) / 180, fx = -Math.sin(a), fz = Math.cos(a), len = Math.max(6, this.scale * 2.5);
     c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.moveTo(q.px, q.py); c.lineTo(q.px + (fx - fz) * len, q.py + (fx + fz) * len * 0.5); c.stroke();
     c.globalAlpha = 1;
+    if (this.modelBuildings?.has(name)) return;
     const gl = mobGlyph(m.id);
     c.fillStyle = 'rgba(18,20,25,.8)'; c.beginPath(); c.arc(q.px, q.py, Math.max(9, this.scale * 1.8), 0, Math.PI * 2); c.fill();
     this.drawGlyph(gl, q.px, q.py, Math.max(14, this.scale * 2.6));

@@ -4,13 +4,14 @@ import {
   packTerrain, unpackTerrain, makePlacement, BLOCK_PALETTE, PATTERNS, PAD_STYLES, prepareSite, digRamp, placementBox, spawnCell, borderBox, setBorder, NO_CAVE,
 } from '../../core/terrain.js';
 import { buildTopMap, dimsAfter } from '../../core/structure.js';
+import BUILDING_DATA from '../../core/buildings-data.js';
 import { findWallSet, assembleWall, snapToAxis } from '../../core/wallset.js';
 import { renderThumb } from './thumb.js';
 import { Textures } from './textures.js';
 import { MiniMap } from './minimap.js';
 import { PROP_GROUPS, PROP_CATALOG, PROP_BY_KEY, PROP_MIXES, PROP_SIZES, makeProp, pickFromMix } from '../../core/props.js';
 import { initScriptUi } from './script-ui.js';
-import { AGES, CIVS, COLORS, MAX_PLAYERS, normalizeScenario, scenarioWarnings } from '../../core/scenario.js';
+import { AGES, CIVS, COLORS, MAX_PLAYERS, normalizeScenario, scenarioWarnings, BUILDING_PREFIX, footprintRect, rotOf } from '../../core/scenario.js';
 import { MOB_CATALOG, MOB_GROUPS, checkMobSpec, formationPoints, makeMob, mobColor, mobStyle, mobGroups } from '../../core/mobs.js';
 
 const $ = (id) => document.getElementById(id);
@@ -419,10 +420,37 @@ function topMap(name, rot, flip) {
   if (!s.maps.has(key)) { const mp = buildTopMap(s, rot, flip); s.maps.set(key, mp); needTextures(mp.pal); }
   return s.maps.get(key);
 }
+// Công trình của mod đặt sẵn trong kịch bản: dựng bằng đúng các khối của mod (data/aoe2/buildings), nhuộm màu theo ô người chơi.
+const bldMaps = new Map();
+function buildingMap(name, rot, slot) {
+  const d = BUILDING_DATA[name]; if (!d) return null;
+  const colorId = slot > 0 ? COLORS[slot - 1]?.[0] : 'blue', key = `${name}|${rot}|${colorId}`;
+  if (!bldMaps.has(key)) {
+    const [w, h, l] = d.size, air = d.palette.length;
+    const palette = d.palette.map((s) => (colorId && colorId !== 'blue' ? s.replace(/^minecraft:blue_/, `minecraft:${colorId}_`) : s)).concat('minecraft:air');
+    const data = new Uint16Array(w * h * l).fill(air);
+    for (const [x, y, z, i] of d.blocks) data[(y * l + z) * w + x] = i;
+    const mp = buildTopMap({ w, h, l, palette, data }, rot, false);
+    needTextures(mp.pal); bldMaps.set(key, mp);
+  }
+  return bldMaps.get(key);
+}
+function buildingItems() {
+  const out = [];
+  for (const m of terrain.mobs) {
+    if (typeof m.id !== 'string' || !m.id.startsWith(BUILDING_PREFIX)) continue;
+    const name = m.id.slice(BUILDING_PREFIX.length), rot = rotOf(m.yaw), mp = buildingMap(name, rot, m.slot | 0);
+    if (!mp) continue;
+    const [x0, z0] = footprintRect(name, Math.floor(m.x), Math.floor(m.z), rot);
+    out.push({ x: x0, y: view.groundY(m.x, m.z) + 1, z: z0, map: mp, label: m.label || name, mob: m, p: { rot } });
+  }
+  view.modelBuildings = new Set(out.map((o) => o.mob.id.slice(BUILDING_PREFIX.length)));
+  return out;
+}
 function refreshStructures() {
   touch3D();
-  view.setStructures(terrain.placements.filter((p) => library.has(p.name))
-    .map((p) => ({ x: p.x, y: p.y, z: p.z, map: topMap(p.name, p.rot, p.flip), label: niceName(p.name), p })));
+  view.setStructures([...terrain.placements.filter((p) => library.has(p.name))
+    .map((p) => ({ x: p.x, y: p.y, z: p.z, map: topMap(p.name, p.rot, p.flip), label: niceName(p.name), p })), ...buildingItems()]);
   state.dirty = true;
   mini?.invalidate();
   refreshPlaced();
@@ -728,6 +756,7 @@ function clickSpawn(cell, shift) {
 const DIRS = ['Nam', 'Tây Nam', 'Tây', 'Tây Bắc', 'Bắc', 'Đông Bắc', 'Đông', 'Đông Nam'];
 let myMobs = []; // mẫu mob người dùng tự lưu: { name, id, snbt }
 function refreshMobTotal() {
+  refreshStructures();      // công trình đặt sẵn của mod vẽ bằng khối thật, nên đổi mob là phải dựng lại
   touch3D();
   $('mob-total').textContent = terrain.mobs.length ? `Đã đặt ${terrain.mobs.length} mob trên map.` : 'Chưa đặt mob nào.';
   window.__refreshScenarioWarn?.();
