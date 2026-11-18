@@ -8,7 +8,7 @@
     "test": "node --test",
     "sample": "node scripts/make-sample.js",
     "start": "electron .",
-    "package": "electron-packager . RiseOfCubicEmpireMapBuilder --platform=win32 --arch=x64 --out=out --overwrite --ignore=\"^/(out|test|docs|scripts)\" --ignore=\"\\.github\""
+    "package": "electron-packager . RiseOfCubicEmpireMapBuilder --platform=win32 --arch=x64 --out=out --icon=build/icon.ico --overwrite --ignore=\"^/(out|test|docs|scripts)\" --ignore=\"\\.github\""
   },
   "main": "src/app/main.js",
   "productName": "Rise Of Cubic Empire Map Builder",

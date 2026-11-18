@@ -36,7 +36,7 @@ function safeFolderName(name) {
 function createWindow() {
   win = new BrowserWindow({
     width: 1400, height: 880, minWidth: 900, minHeight: 600,
-    backgroundColor: '#181b21', title: 'Rise Of Cubic Empire Map Builder',
+    backgroundColor: '#181b21', title: 'Rise Of Cubic Empire Map Builder', icon: path.join(here, '..', '..', 'build', 'icon.png'),
     webPreferences: { preload: path.join(here, 'preload.cjs'), contextIsolation: true, nodeIntegration: false },
   });
   Menu.setApplicationMenu(null);
