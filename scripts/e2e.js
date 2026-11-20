@@ -563,13 +563,14 @@ export default async function run(win) {
     { x: cells.tree.x, y: Math.round(probeH(cells.tree)) + 1, z: cells.tree.z, id: 'oak_log' },
   ];
   // Bảng trigger v2: dựng vài trigger mẫu, mở cửa sổ, mở rộng một dòng, chụp hình; không được có lỗi.
-  await js(`(()=>{const s=__mmb.terrain.scenario;s.zones.push({id:'z1',name:'Cửa thành',x0:10,x1:20,z0:10,z1:20});s.taskforces.push({id:'tf1',name:'Đội kiếm sĩ',units:[{unit:'militia',count:8}]});
+  await js(`(()=>{const s=__mmb.terrain.scenario;s.objectives.push({id:'m1',text:'Hạ 20 địch',shown:false,goal:20,flag:'kills_1'},{id:'m0',text:'Xây Barracks',shown:true,goal:0,flag:''});s.zones.push({id:'z1',name:'Cửa thành',x0:10,x1:20,z0:10,z1:20});s.taskforces.push({id:'tf1',name:'Đội kiếm sĩ',units:[{unit:'militia',count:8}]});
     s.triggers.push({id:'t1',name:'Địch tấn công đợt 1',enabled:true,once:true,repeat:0,any:false,diff:[true,true,true],
       conditions:[{type:'timer',seconds:300},{type:'population',slot:2,op:'>=',n:30},{type:'ageReached',slot:2,op:'>=',n:1}],
-      actions:[{type:'createTeam',slot:2,taskforce:'tf1',zone:'z1',team:'dot1'},{type:'teamOrder',team:'dot1',order:'attack',zone:'z1'},{type:'objective',id:'m1',text:'Hạ 20 địch',state:'add',goal:20,flag:'kills_1'},{type:'sound',sound:'horn'}]});
+      actions:[{type:'createTeam',slot:2,taskforce:'tf1',zone:'z1',team:'dot1'},{type:'teamOrder',team:'dot1',order:'attack',zone:'z1'},{type:'objective',id:'m1',state:'show'},{type:'sound',sound:'horn'}]});
     s.triggers.push({id:'t2',name:'Thắng khi diệt đội',enabled:false,once:true,repeat:0,any:false,diff:[true,true,true],conditions:[{type:'teamDead',team:'dot1'}],actions:[{type:'result',value:'win',text:'Giỏi lắm'}]});
     __mmb.state.dirty=true})()`);
   await js("document.querySelector('[data-tab=script]').click()"); await sleep(200);
+  await shot('script-tab.png');
   await js("document.getElementById('trg-open').click()"); await sleep(300);
   await js("document.querySelectorAll('.trg-win .it-head')[3].click()"); await sleep(200);
   await shot('trigger-window.png');

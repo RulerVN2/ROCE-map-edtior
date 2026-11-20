@@ -186,7 +186,21 @@ test('v3: điều kiện/hành động mới được giữ nguyên khi chuẩn 
   assert.equal(t.conditions.length, 5);
   assert.equal(t.actions.length, 6);
   assert.equal(t.actions[0].age, 3, 'thời đại bị kẹp về 0..3');
-  assert.equal(t.actions[5].goal, 20);
-  assert.equal(t.actions[5].flag, 'kills_1');
+  assert.equal(t.actions[5].id, 'm1');
+  assert.equal(t.actions[5].state, 'show', 'trạng thái cũ "add" đổi thành "show"');
+  const m1 = j.objectives.find((o) => o.id === 'm1');
+  assert.ok(m1 && m1.goal === 20 && m1.flag === 'kills_1' && m1.text === 'Hạ 20', 'mục tiêu khai báo trong hành động cũ được chuyển thành mục tiêu khai báo');
   for (const [k, v] of Object.entries({ ...COND_TYPES, ...ACT_TYPES })) assert.ok(v.cat, 'thiếu nhóm: ' + k);
+});
+
+test('v4: mục tiêu khai báo, ẩn/hiện, cảnh báo mục tiêu không tồn tại', () => {
+  const s = defaultScenario();
+  s.objectives.push({ id: 'm1', text: 'Xây Barracks', shown: true, goal: 0, flag: '' }, { id: 'm2', text: 'Hạ 20 địch', shown: false, goal: 20, flag: 'kills_1' });
+  s.triggers.push({ id: 't1', name: 'A', conditions: [{ type: 'objectiveIs', id: 'm1', state: 'done' }], actions: [{ type: 'objective', id: 'm2', state: 'show' }, { type: 'objective', id: 'm1', state: 'hide' }, { type: 'objective', id: 'zzz', state: 'done' }] });
+  const j = scenarioJson(s);
+  assert.equal(j.objectives.length, 2);
+  assert.equal(j.objectives[1].shown, false);
+  assert.equal(j.triggers[0].conditions[0].type, 'objectiveIs');
+  const w = scenarioWarnings(s, []);
+  assert.ok(w.some((x) => x.includes('mục tiêu')), 'phải cảnh báo mục tiêu zzz không tồn tại');
 });

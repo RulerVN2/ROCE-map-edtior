@@ -53,7 +53,9 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
       case 'stance': return sel([['enemy', 'Kẻ địch'], ['ally', 'Đồng minh'], ['neutral', 'Trung lập']], val, on, label);
       case 'order': return sel(ORDERS, val, on, label);
       case 'what': return sel([['any', 'Quân hoặc công trình'], ['unit', 'Quân'], ['building', 'Công trình']], val, on, label);
-      case 'objstate': return sel([['add', 'Thêm mới'], ['done', 'Hoàn thành'], ['fail', 'Thất bại']], val, on, label);
+      case 'objstate': return sel([['show', 'Hiện lên'], ['done', 'Hoàn thành (gạch)'], ['fail', 'Thất bại'], ['hide', 'Ẩn (biến mất)']], val, on, label);
+      case 'objis': return sel([['done', 'Đã hoàn thành'], ['active', 'Đang hiện (chưa xong)'], ['fail', 'Thất bại'], ['hidden', 'Đang ẩn']], val, on, label);
+      case 'objective': return sel([['', '(chọn mục tiêu)'], ...sc().objectives.map((o) => [o.id, o.text])], val, on, label);
       case 'result': return sel([['win', 'Thắng'], ['lose', 'Thua']], val, on, label);
       case 'trigger': return sel([['', '(chọn trigger)'], ...sc().triggers.map((t) => [t.id, t.name])], val, on, label);
       case 'team': { const t = txt(val, on, 'tên đội', 90, label); t.setAttribute('list', 'sc-teams'); return t; }
@@ -68,6 +70,36 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
   }
 
   const nextId = (prefix, list) => { let i = 1; while (list.some((x) => x.id === prefix + i)) i++; return prefix + i; };
+
+  // ---- Mục tiêu (hiện ở HUD trong game, như AoE2) ----
+  function renderObjectives() {
+    const box = $('obj-list'); box.textContent = '';
+    const list = sc().objectives;
+    // Xem trước đúng kiểu HUD: chỉ mục tiêu "hiện từ đầu"; dòng thứ hai minh hoạ mục tiêu đã xong bị gạch.
+    const pv = $('obj-preview'); pv.textContent = '';
+    pv.appendChild(mk('div', { className: 'obj-title', textContent: 'Mục tiêu' }));
+    const shown = list.filter((o) => o.shown);
+    for (const o of shown) pv.appendChild(mk('div', { className: 'obj-line', textContent: '• ' + (o.text || o.id) + (o.goal > 0 ? ` (0/${o.goal})` : '') }));
+    if (!shown.length) pv.appendChild(mk('div', { className: 'obj-line obj-dim', textContent: '(không có mục tiêu nào hiện từ đầu)' }));
+    pv.appendChild(mk('div', { className: 'obj-legend', textContent: 'Xem trước HUD góc trên phải. Hoàn thành → chữ bị gạch ✔. Ẩn → biến mất. Mục tiêu không "hiện từ đầu" xuất hiện khi trigger bật.' }));
+    list.forEach((o, i) => {
+      const move = (d) => { const j = i + d; if (j < 0 || j >= list.length) return; [list[i], list[j]] = [list[j], list[i]]; changed(); renderObjectives(); };
+      box.appendChild(card(
+        mk('div', { className: 'btnrow' }, [
+          txt(o.text, (v) => { o.text = v || o.id; changed(); renderObjectives(); renderTriggers(); }, 'nội dung mục tiêu', 190, 'Chữ hiện trong game'),
+          mk('button', { textContent: '↑', disabled: i === 0, onclick: () => move(-1) }), mk('button', { textContent: '↓', disabled: i === list.length - 1, onclick: () => move(1) }),
+          mk('button', { textContent: '✕', title: 'Xoá mục tiêu (trigger đang dùng nó sẽ báo lỗi)', onclick: () => { list.splice(i, 1); changed(); render(); } }),
+        ]),
+        mk('div', { className: 'btnrow' }, [
+          mk('label', { className: 'check', title: 'Bật: hiện ngay từ đầu ván. Tắt: ẩn cho tới khi trigger "Hiện mục tiêu".' }, [Object.assign(mk('input', { type: 'checkbox', checked: o.shown }), { onchange: (e) => { o.shown = e.target.checked; changed(); renderObjectives(); } }), document.createTextNode(' Hiện từ đầu')]),
+          mk('small', { textContent: 'Đếm', style: 'align-self:center', title: 'Tuỳ chọn: tự hoàn thành khi cờ đạt đích, ví dụ kills_1 = số địch Ô 1 đã hạ' }),
+          txt(o.flag, (v) => { o.flag = v; changed(); }, 'cờ vd kills_1', 90, 'Tên cờ đếm tiến độ'),
+          numIn(o.goal, (v) => { o.goal = v; changed(); renderObjectives(); }, 0, 999999, 56, 'Đích (0 = không đếm)'),
+        ]),
+      ));
+    });
+    if (!list.length) box.appendChild(mk('p', { className: 'empty', textContent: 'Chưa có mục tiêu. Bấm "+ Thêm mục tiêu", rồi dùng trigger để hiện / hoàn thành / ẩn.' }));
+  }
 
   // ---- Vùng ----
   function renderZones() {
@@ -143,6 +175,7 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
       case 'unit': return nameOf(unitList(), v);
       case 'building': case 'building*': return v === 'any' ? 'mọi công trình' : nameOf(BUILDINGS, v);
       case 'res': return nameOf(RES, v).toLowerCase();
+      case 'objective': return v ? `“${sc().objectives.find((o) => o.id === v)?.text ?? '⚠ mục tiêu không tồn tại'}”` : '⚠ chưa chọn mục tiêu';
       case 'trigger': return v ? (sc().triggers.find((x) => x.id === v)?.name ?? '⚠ trigger không tồn tại') : '⚠ chưa chọn trigger';
       case 'team': return v ? `“${v}”` : '⚠ chưa đặt tên đội';
       case 'order': return nameOf(ORDERS, v).toLowerCase();
@@ -175,7 +208,8 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
     aiBuild: (g) => `${g('slot')} đặt ${g('building')} trong ${g('zone')}`,
     giveRes: (g, i) => `${i.n >= 0 ? 'Cho' : 'Trừ'} ${g('slot')} ${Math.abs(i.n)} ${g('res')}`,
     diplomacy: (g, i) => `${g('a')} và ${g('b')} thành ${nameOf([['enemy', 'kẻ địch'], ['ally', 'đồng minh'], ['neutral', 'trung lập']], i.stance)}`,
-    objective: (g, i) => `${nameOf([['add', 'Thêm mục tiêu'], ['done', 'Hoàn thành mục tiêu'], ['fail', 'Thất bại mục tiêu']], i.state)}: “${i.text || i.id}”${i.goal > 0 ? ` (đếm ${i.flag || '?'} tới ${i.goal})` : ''}`,
+    objective: (g, i) => `${nameOf([['show', 'Hiện mục tiêu'], ['done', 'Hoàn thành mục tiêu (gạch)'], ['fail', 'Thất bại mục tiêu'], ['hide', 'Ẩn mục tiêu']], i.state)} ${g('id')}`,
+    objectiveIs: (g, i) => `Mục tiêu ${g('id')} ${nameOf([['done', 'đã hoàn thành'], ['active', 'đang hiện'], ['fail', 'thất bại'], ['hidden', 'đang ẩn']], i.state)}`,
     result: (g, i) => `${i.value === 'win' ? '🏆 THẮNG' : '💀 THUA'} kịch bản${i.text ? ` — “${i.text}”` : ''}`,
     message: (g, i) => `Hiện tin nhắn: “${i.text}”`,
     setFlag: (g, i) => `Cờ “${i.name}” ${i.op === 'add' ? '+=' : '='} ${i.n}`,
@@ -352,10 +386,11 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
 
   function render() {
     $('sc-diff').value = String(sc().difficulty);
-    renderZones(); renderTfs(); renderAi(); renderTriggers(); warn();
+    renderObjectives(); renderZones(); renderTfs(); renderAi(); renderTriggers(); warn();
   }
 
   $('sc-diff').addEventListener('change', () => { sc().difficulty = Number($('sc-diff').value); changed(); });
+  $('obj-add').addEventListener('click', () => { const s = sc(); const id = nextId('m', s.objectives); s.objectives.push({ id, text: 'Mục tiêu ' + id.slice(1), shown: true, goal: 0, flag: '' }); changed(); render(); });
   $('tf-add').addEventListener('click', () => { const s = sc(); const id = nextId('tf', s.taskforces); s.taskforces.push({ id, name: 'Đội ' + id.slice(2), units: [{ unit: 'militia', count: 5 }] }); changed(); render(); });
   $('trg-add').addEventListener('click', () => { const s = sc(); const id = nextId('t', s.triggers); s.triggers.push({ id, name: 'Trigger ' + id.slice(1), enabled: true, once: true, repeat: 0, any: false, diff: [true, true, true], conditions: [{ type: 'timer', seconds: 60 }], actions: [{ type: 'message', text: '' }] }); changed(); openTrigWin(id); warn(); });
   $('trg-open').addEventListener('click', () => openTrigWin());

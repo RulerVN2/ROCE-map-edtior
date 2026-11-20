@@ -133,7 +133,7 @@ export const DIFFICULTIES = ['Dễ', 'Thường', 'Khó'];
 /**
  * Mô tả các điều kiện và hành động của trigger. Mỗi trường: [khoá, nhãn, kiểu, mặc định].
  * Kiểu: slot, slot0 (cho phép 0), zone, zone? (không bắt buộc), taskforce, unit, building, building*, res, op, int, text, bool, trigger,
- * team, order, stance, what, objstate, opset, trigop, result, age (0..3), sound, aistance, tech (mã công nghệ).
+ * team, order, stance, what, objstate, opset, trigop, result, objective, objis, age (0..3), sound, aistance, tech (mã công nghệ).
  */
 export const COND_TYPES = {
   timer: { cat: 'Thời gian & biến', label: 'Đã qua số giây', fields: [['seconds', 'Giây', 'int', 60]] },
@@ -148,6 +148,7 @@ export const COND_TYPES = {
   population: { cat: 'Quân & công trình', label: 'Dân số', fields: [['slot', 'Ô', 'slot', 1], ['op', '', 'op', '>='], ['n', 'Số', 'int', 50]] },
   kills: { cat: 'Quân & công trình', label: 'Số địch đã hạ', fields: [['slot', 'Ô', 'slot', 1], ['op', '', 'op', '>='], ['n', 'Số', 'int', 20]] },
   teamCount: { cat: 'Đội quân', label: 'Số quân còn sống của đội', fields: [['team', 'Tên đội', 'team', ''], ['op', '', 'op', '<='], ['n', 'Số', 'int', 3]] },
+  objectiveIs: { cat: 'Mục tiêu', label: 'Trạng thái mục tiêu', fields: [['id', 'Mục tiêu', 'objective', ''], ['state', 'Đang ở', 'objis', 'done']] },
   teamDead: { cat: 'Đội quân', label: 'Đội bị diệt', fields: [['team', 'Tên đội', 'team', '']] },
 };
 export const ACT_TYPES = {
@@ -158,7 +159,7 @@ export const ACT_TYPES = {
   aiBuild: { cat: 'AI & kinh tế', label: 'AI đặt công trình', fields: [['slot', 'Ô', 'slot', 2], ['building', 'Loại', 'building', 'barracks'], ['zone', 'Trong vùng', 'zone', '']] },
   giveRes: { cat: 'AI & kinh tế', label: 'Cho / trừ tài nguyên', fields: [['slot', 'Ô', 'slot', 1], ['res', 'Loại', 'res', 'gold'], ['n', 'Số (âm = trừ)', 'int', 100]] },
   diplomacy: { cat: 'Thế giới', label: 'Đổi ngoại giao', fields: [['a', 'Ô A', 'slot', 1], ['b', 'Ô B', 'slot', 2], ['stance', 'Thành', 'stance', 'enemy']] },
-  objective: { cat: 'Thông báo', label: 'Mục tiêu', fields: [['id', 'Mã', 'text', 'm1'], ['text', 'Nội dung', 'text', ''], ['state', 'Trạng thái', 'objstate', 'add'], ['goal', 'Đích đếm (0 = không đếm)', 'int', 0], ['flag', 'Đếm theo cờ (vd kills_1)', 'text', '']] },
+  objective: { cat: 'Mục tiêu', label: 'Đổi trạng thái mục tiêu', fields: [['id', 'Mục tiêu', 'objective', ''], ['state', 'Làm gì', 'objstate', 'show']] },
   setAge: { cat: 'Thời đại & tech', label: 'Đặt thời đại', fields: [['slot', 'Ô', 'slot', 1], ['age', 'Thời đại', 'age', 1]] },
   research: { cat: 'Thời đại & tech', label: 'Cho công nghệ (miễn phí)', fields: [['slot', 'Ô', 'slot', 1], ['tech', 'Mã công nghệ', 'tech', '']] },
   killTeam: { cat: 'Đội quân', label: 'Diệt cả đội', fields: [['team', 'Tên đội', 'team', '']] },
@@ -183,6 +184,7 @@ export function defaultScenario() {
     zones: [],                       // [{id, name, x0, z0, x1, z1}]
     taskforces: [],                  // [{id, name, units: [{unit, count}]}]
     ai: Array.from({ length: MAX_PLAYERS }, () => ({ enabled: false, cheat: false, cheatRate: 60, builders: 2, jobs: { food: 25, wood: 40, gold: 20, stone: 15 } })),
+    objectives: [],                  // [{id, text, shown, goal, flag}] hiện ở HUD Mục tiêu; goal>0: tự hoàn thành khi cờ `flag` đạt goal
     triggers: [],                    // [{id, name, enabled, once, repeat, any, diff:[b,b,b], conditions:[{type,...}], actions:[{type,...}]}]
   };
 }
@@ -244,6 +246,18 @@ export function normalizeScenario(s) {
     };
   });
   seen.clear();
+  seen.clear();
+  d.objectives = (Array.isArray(s.objectives) ? s.objectives : []).map((o) => {
+    const id = uniq(str(o?.id, '', 40)); if (!id) return null;
+    return { id, text: str(o.text, id, 160) || id, shown: o.shown !== false, goal: num(o.goal, 0, 999999, 0), flag: str(o.flag, '', 60) };
+  }).filter(Boolean);
+  // Tệp cũ: mục tiêu khai báo ngay trong hành động (text/goal/flag) thì chuyển thành mục tiêu khai báo.
+  for (const t of Array.isArray(s.triggers) ? s.triggers : []) for (const a of Array.isArray(t?.actions) ? t.actions : []) {
+    if (a?.type === 'objective' && typeof a.id === 'string' && a.text && !d.objectives.some((o) => o.id === a.id) && idOk(a.id)) {
+      d.objectives.push({ id: a.id, text: str(a.text, a.id, 160), shown: false, goal: num(a.goal, 0, 999999, 0), flag: str(a.flag, '', 60) });
+    }
+    if (a?.type === 'objective' && a.state === 'add') a.state = 'show';
+  }
   d.triggers = (Array.isArray(s.triggers) ? s.triggers : []).map((t) => {
     const id = uniq(str(t?.id, '', 40)); if (!id) return null;
     const diff = Array.isArray(t.diff) ? [0, 1, 2].map((k) => t.diff[k] !== false) : [true, true, true];
@@ -287,6 +301,7 @@ export function scenarioJson(sc, mobs = []) {
     zones: s.zones,
     taskforces: s.taskforces,
     ai: s.ai.map((a, i) => ({ slot: i + 1, ...a })),
+    objectives: s.objectives,
     triggers: s.triggers,
   };
 }
@@ -308,6 +323,7 @@ export function scenarioWarnings(sc, mobs = []) {
   }
   for (const m of mobs.filter(isPlaceholder)) if (!(m.slot | 0)) out.push('Có vật giữ chỗ chưa gán ô người chơi.');
   const zones = new Set(s.zones.map((z) => z.id)), tfs = new Set(s.taskforces.map((t) => t.id)), trs = new Set(s.triggers.map((t) => t.id));
+  const objs = new Set(s.objectives.map((o) => o.id));
   const teams = new Set();
   for (const t of s.triggers) for (const a of t.actions) if (a.type === 'createTeam' && a.team) teams.add(a.team);
   for (const t of s.triggers) {
@@ -319,6 +335,7 @@ export function scenarioWarnings(sc, mobs = []) {
         const v = it[k];
         if (kind === 'zone' && !zones.has(v)) out.push(here + 'chưa chọn vùng hợp lệ.');
         if (kind === 'taskforce' && !tfs.has(v)) out.push(here + 'chưa chọn đội mẫu hợp lệ.');
+        if (kind === 'objective' && !objs.has(v)) out.push(here + 'chưa chọn mục tiêu (hoặc mục tiêu đã bị xoá).');
         if (kind === 'trigger' && !trs.has(v)) out.push(here + 'trigger được điều khiển không tồn tại.');
         if (kind === 'zone?' && v && !zones.has(v)) out.push(here + `vùng "${v}" không tồn tại.`);
         if (kind === 'team' && !teams.has(v)) out.push(here + `đội "${v}" chưa từng được lập ở trigger nào.`);

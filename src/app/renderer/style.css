@@ -210,3 +210,10 @@ dialog menu { display: flex; justify-content: flex-end; gap: 8px; margin: 0; pad
 .it-body .sc-f small { color: #9aa3b0; margin-bottom: 2px; }
 .it-add { padding: 6px; border: 1px dashed #4a5262; background: transparent; border-radius: 6px; color: #aab3c0; cursor: pointer; }
 .it-add:hover { border-color: #4a90d9; color: #fff; }
+
+/* ---- Xem trước HUD Mục tiêu ---- */
+.obj-preview { margin: 4px 0 6px; padding: 6px 8px; border: 1px solid #6b5a2d; border-radius: 6px; background: #1d1a12; font-size: 12px; }
+.obj-title { color: #e9c46a; font-weight: 600; margin-bottom: 2px; }
+.obj-line { color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.obj-dim { color: #8a8470; }
+.obj-legend { margin-top: 4px; color: #9a9480; font-size: 11px; line-height: 1.3; }
