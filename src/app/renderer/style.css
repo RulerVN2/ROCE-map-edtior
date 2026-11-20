@@ -187,3 +187,26 @@ dialog menu { display: flex; justify-content: flex-end; gap: 8px; margin: 0; pad
 .trg-win .sc-item { flex: 0 0 auto; }
 .trg-win select, .trg-win input[type="text"], .trg-win input[type="number"] { background: #181b21; border: 1px solid #3c434f; border-radius: 5px; padding: 3px 5px; }
 .trg-win .sc-f select, .trg-win .sc-f input { max-width: 170px; }
+
+/* ---- Bảng trigger v2: dòng tóm tắt, nhóm màu, mở/đóng chi tiết ---- */
+.trg-win { font-size: 13px; }
+.trg-sentence { padding: 6px 10px; border-radius: 6px; background: #1a2a3d; border: 1px solid #2d4a6b; color: #cfe3fa; font-size: 12.5px; }
+.trg-find { margin: 6px; padding: 4px 8px; background: #181b21; border: 1px solid #3c434f; border-radius: 6px; color: inherit; }
+.trg-rowtxt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.trg-rowtxt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trg-row { padding: 6px 8px; }
+.trg-win .sc-item { border-left-width: 4px; border-radius: 6px; background: #252a33; gap: 0; padding: 0; }
+.trg-win .sc-item.open { background: #2a303b; }
+.it-head { display: flex; align-items: center; gap: 8px; padding: 7px 8px; cursor: pointer; }
+.it-head:hover { background: rgba(255,255,255,.05); }
+.it-chev { width: 12px; color: #8a93a1; flex: 0 0 auto; }
+.it-cat { flex: 0 0 auto; font-size: 10.5px; padding: 1px 6px; border: 1px solid; border-radius: 10px; white-space: nowrap; }
+.it-say { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #e8edf5; }
+.it-btns { display: flex; gap: 2px; flex: 0 0 auto; }
+.it-btns button { padding: 1px 6px; min-width: 22px; background: transparent; border: 1px solid #3c434f; border-radius: 4px; color: #aab3c0; }
+.it-btns button:hover:not(:disabled) { background: #343b48; color: #fff; }
+.it-btns button:disabled { opacity: .3; }
+.it-body { display: flex; flex-wrap: wrap; gap: 8px 10px; padding: 8px 10px 10px 24px; border-top: 1px solid #343a45; }
+.it-body .sc-f small { color: #9aa3b0; margin-bottom: 2px; }
+.it-add { padding: 6px; border: 1px dashed #4a5262; background: transparent; border-radius: 6px; color: #aab3c0; cursor: pointer; }
+.it-add:hover { border-color: #4a90d9; color: #fff; }

@@ -173,3 +173,20 @@ test('v3: hình chữ nhật nền của công trình khớp BuildingPlacement c
   assert.deepEqual(footprintRect('barracks', 50, 60, 2), [46, 55, 55, 66]);
   assert.deepEqual(footprintRect('house', 10, 10, 0), [8, 8, 12, 12]);      // chẵn: lệch một ô về phía gốc như worldPos
 });
+
+test('v3: điều kiện/hành động mới được giữ nguyên khi chuẩn hoá và xuất JSON', () => {
+  const s = defaultScenario();
+  s.triggers.push({ id: 't9', name: 'Mới', conditions: [
+    { type: 'ageReached', slot: 1, op: '>=', n: 2 }, { type: 'techDone', slot: 1, tech: 'feudal_age' }, { type: 'population', slot: 2, op: '>=', n: 40 },
+    { type: 'kills', slot: 1, op: '>=', n: 20 }, { type: 'teamCount', team: 'a', op: '<=', n: 3 }],
+  actions: [{ type: 'setAge', slot: 2, age: 9 }, { type: 'research', slot: 2, tech: 'x' }, { type: 'killTeam', team: 'a' }, { type: 'setStance', team: 'a', stance: 'passive' },
+    { type: 'sound', sound: 'bell' }, { type: 'objective', id: 'm1', text: 'Hạ 20', state: 'add', goal: 20, flag: 'kills_1' }] });
+  const j = scenarioJson(s);
+  const t = j.triggers[0];
+  assert.equal(t.conditions.length, 5);
+  assert.equal(t.actions.length, 6);
+  assert.equal(t.actions[0].age, 3, 'thời đại bị kẹp về 0..3');
+  assert.equal(t.actions[5].goal, 20);
+  assert.equal(t.actions[5].flag, 'kills_1');
+  for (const [k, v] of Object.entries({ ...COND_TYPES, ...ACT_TYPES })) assert.ok(v.cat, 'thiếu nhóm: ' + k);
+});

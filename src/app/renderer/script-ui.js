@@ -57,6 +57,10 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
       case 'result': return sel([['win', 'Thắng'], ['lose', 'Thua']], val, on, label);
       case 'trigger': return sel([['', '(chọn trigger)'], ...sc().triggers.map((t) => [t.id, t.name])], val, on, label);
       case 'team': { const t = txt(val, on, 'tên đội', 90, label); t.setAttribute('list', 'sc-teams'); return t; }
+      case 'age': return sel([[0, 'Dark Age'], [1, 'Feudal Age'], [2, 'Castle Age'], [3, 'Imperial Age']], val, (v) => on(Number(v)), label);
+      case 'sound': return sel([['horn', 'Kèn hiệu (raid horn)'], ['bell', 'Chuông'], ['growl', 'Tiếng gầm']], val, on, label);
+      case 'aistance': return sel([['aggressive', 'Hung hăng (tự đuổi đánh)'], ['defensive', 'Phòng thủ'], ['passive', 'Không đánh trả']], val, on, label);
+      case 'tech': return txt(val, on, 'vd: feudal_age', 130, label);
       case 'bool': { const c = mk('input', { type: 'checkbox', checked: !!val, title: label }); c.addEventListener('change', () => on(c.checked)); return c; }
       case 'int': return numIn(val, on, -999999, 999999, 70, label);
       default: return txt(val, on, label, kind === 'text' && label === 'Nội dung' ? 220 : 110, label);
@@ -127,18 +131,118 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
   }
 
   // ---- Trigger ----
+  const CAT_COL = { 'Thời gian & biến': '#8f9bb3', 'Quân & công trình': '#d9a441', 'Kinh tế': '#e0b84f', 'Thời đại & tech': '#b07be0', 'Đội quân': '#4fae6b', 'AI & kinh tế': '#4a90d9', 'Thế giới': '#d9704a', 'Thông báo': '#d96a9a' };
+  const AGES = ['Dark Age', 'Feudal Age', 'Castle Age', 'Imperial Age'];
+  const nameOf = (list, v) => { const f = opt(list).find(([k]) => String(k) === String(v)); return f ? f[1] : String(v); };
+  // Chữ hiển thị của một giá trị theo kiểu trường (dùng cho câu tóm tắt một dòng).
+  function disp(kind, v) {
+    switch (kind) {
+      case 'slot': case 'slot0': return v ? 'Ô ' + v : 'Gaia';
+      case 'zone': case 'zone?': return v ? (sc().zones.find((z) => z.id === v)?.name ?? '⚠ vùng không tồn tại') : (kind === 'zone' ? '⚠ chưa chọn vùng' : 'không chọn vùng');
+      case 'taskforce': return v ? (sc().taskforces.find((x) => x.id === v)?.name ?? '⚠ đội mẫu không tồn tại') : '⚠ chưa chọn đội mẫu';
+      case 'unit': return nameOf(unitList(), v);
+      case 'building': case 'building*': return v === 'any' ? 'mọi công trình' : nameOf(BUILDINGS, v);
+      case 'res': return nameOf(RES, v).toLowerCase();
+      case 'trigger': return v ? (sc().triggers.find((x) => x.id === v)?.name ?? '⚠ trigger không tồn tại') : '⚠ chưa chọn trigger';
+      case 'team': return v ? `“${v}”` : '⚠ chưa đặt tên đội';
+      case 'order': return nameOf(ORDERS, v).toLowerCase();
+      case 'age': return AGES[v] ?? String(v);
+      case 'what': return nameOf([['any', 'quân hoặc công trình'], ['unit', 'quân'], ['building', 'công trình']], v);
+      case 'tech': return v ? `“${v}”` : '⚠ chưa nhập mã';
+      default: return String(v);
+    }
+  }
+  const SAY = {
+    // điều kiện
+    timer: (g, i) => `Đã qua ${i.seconds} giây (${Math.floor(i.seconds / 60)}:${String(i.seconds % 60).padStart(2, '0')})`,
+    unitCount: (g, i) => `${g('slot')} có ${i.op} ${i.n} ${g('unit')}`,
+    buildingCount: (g, i) => `${g('slot')} có ${i.op} ${i.n} ${g('building')}`,
+    inZone: (g, i) => `${i.op} ${i.n} quân của ${g('slot')} đang ở ${g('zone')}`,
+    detect: (g) => `${g('viewer')} nhìn thấy ${g('what')} của ${g('target')}`,
+    resource: (g, i) => `${g('slot')} có ${i.op} ${i.n} ${g('res')}`,
+    flag: (g, i) => `Cờ “${i.name}” ${i.op} ${i.n}`,
+    ageReached: (g, i) => `${g('slot')} ${i.op} ${g('n')}`,
+    techDone: (g) => `${g('slot')} đã nghiên cứu ${g('tech')}`,
+    population: (g, i) => `Dân số ${g('slot')} ${i.op} ${i.n}`,
+    kills: (g, i) => `${g('slot')} đã hạ ${i.op} ${i.n} địch`,
+    teamCount: (g, i) => `Đội ${g('team')} còn ${i.op} ${i.n} quân`,
+    teamDead: (g) => `Đội ${g('team')} bị diệt hết`,
+    // hành động
+    createTeam: (g) => `${g('slot')} lập ${g('taskforce')}, tên ${g('team')}, ${g('zone') === 'không chọn vùng' ? 'cạnh Town Center' : 'tại ' + g('zone')}`,
+    teamOrder: (g) => `Đội ${g('team')}: ${g('order')}${g('zone') === 'không chọn vùng' ? '' : ' → ' + g('zone')}`,
+    aiJobs: (g, i) => `${g('slot')} chia dân: ăn ${i.food} · gỗ ${i.wood} · vàng ${i.gold} · đá ${i.stone}`,
+    aiCheat: (g, i) => `${g('slot')} ${i.on ? 'BẬT' : 'TẮT'} cheat tài nguyên${i.on ? ` (${i.rate}/loại/phút)` : ''}`,
+    aiBuild: (g) => `${g('slot')} đặt ${g('building')} trong ${g('zone')}`,
+    giveRes: (g, i) => `${i.n >= 0 ? 'Cho' : 'Trừ'} ${g('slot')} ${Math.abs(i.n)} ${g('res')}`,
+    diplomacy: (g, i) => `${g('a')} và ${g('b')} thành ${nameOf([['enemy', 'kẻ địch'], ['ally', 'đồng minh'], ['neutral', 'trung lập']], i.stance)}`,
+    objective: (g, i) => `${nameOf([['add', 'Thêm mục tiêu'], ['done', 'Hoàn thành mục tiêu'], ['fail', 'Thất bại mục tiêu']], i.state)}: “${i.text || i.id}”${i.goal > 0 ? ` (đếm ${i.flag || '?'} tới ${i.goal})` : ''}`,
+    result: (g, i) => `${i.value === 'win' ? '🏆 THẮNG' : '💀 THUA'} kịch bản${i.text ? ` — “${i.text}”` : ''}`,
+    message: (g, i) => `Hiện tin nhắn: “${i.text}”`,
+    setFlag: (g, i) => `Cờ “${i.name}” ${i.op === 'add' ? '+=' : '='} ${i.n}`,
+    trigger: (g, i) => `${nameOf([['enable', 'Bật'], ['disable', 'Tắt'], ['run', 'Chạy hành động của']], i.op)} ${g('id')}${i.op === 'run' && i.delay > 0 ? `, sau ${i.delay}s` : ''}`,
+    setAge: (g) => `${g('slot')} lên ${g('age')}`,
+    research: (g) => `${g('slot')} nhận công nghệ ${g('tech')}`,
+    killTeam: (g) => `Diệt cả đội ${g('team')}`,
+    setStance: (g, i) => `Đội ${g('team')} đổi thế đánh: ${nameOf([['aggressive', 'hung hăng'], ['defensive', 'phòng thủ'], ['passive', 'không đánh trả']], i.stance)}`,
+    sound: (g, i) => `Phát âm thanh: ${nameOf([['horn', 'kèn hiệu'], ['bell', 'chuông'], ['growl', 'tiếng gầm']], i.sound)}`,
+  };
+  function describe(item, schema) {
+    const def = schema[item.type];
+    const kinds = Object.fromEntries(def.fields.map(([k, , kind]) => [k, kind]));
+    const g = (k) => disp(kinds[k], item[k]);
+    try { return (SAY[item.type] ?? (() => def.label))(g, item); } catch { return def.label; }
+  }
+  const openItems = new WeakSet();     // dòng đang mở rộng (xem / sửa chi tiết)
+
+  function typeSelect(schema, cur, on) {
+    const s = mk('select', { title: 'Loại' });
+    const groups = new Map();
+    for (const [k, v] of Object.entries(schema)) { if (!groups.has(v.cat)) groups.set(v.cat, mk('optgroup', { label: v.cat })); groups.get(v.cat).appendChild(new Option(v.label, k)); }
+    for (const g of groups.values()) s.appendChild(g);
+    s.value = cur;
+    s.addEventListener('change', () => on(s.value));
+    return s;
+  }
+  const freshItem = (type, schema) => { const o = { type }; for (const [k, , , d] of schema[type].fields) o[k] = d; return o; };
+
   function itemRow(item, schema, list, idx, rerender) {
-    const typeSel = sel(Object.entries(schema).map(([k, v]) => [k, v.label]), item.type, (v) => {
-      const def = { type: v };
-      for (const [k, , , d] of schema[v].fields) def[k] = d;
-      list[idx] = def; changed(); rerender();
-    }, 'Loại');
-    const fields = schema[item.type].fields.map(([k, label, kind]) => {
-      const f = field(kind, item[k], (v) => { item[k] = v; changed(); if (kind === 'text' || kind === 'team') renderTriggers(); }, label);
-      return label ? mk('label', { className: 'sc-f' }, [mk('small', { textContent: label }), f]) : f;
-    });
-    const del = mk('button', { textContent: '✕', title: 'Xoá dòng này', onclick: () => { list.splice(idx, 1); changed(); rerender(); } });
-    return mk('div', { className: 'sc-item' }, [mk('div', { className: 'btnrow' }, [typeSel, del]), mk('div', { className: 'sc-fields' }, fields)]);
+    const def = schema[item.type];
+    const isOpen = openItems.has(item);
+    const col = CAT_COL[def.cat] ?? '#888';
+    const move = (d) => { const j = idx + d; if (j < 0 || j >= list.length) return; [list[idx], list[j]] = [list[j], list[idx]]; changed(); rerender(); };
+    const head = mk('div', { className: 'it-head', onclick: () => { if (isOpen) openItems.delete(item); else openItems.add(item); rerender(); } }, [
+      mk('span', { className: 'it-chev', textContent: isOpen ? '▾' : '▸' }),
+      mk('span', { className: 'it-cat', textContent: def.cat, style: `background:${col}22;color:${col};border-color:${col}66` }),
+      mk('span', { className: 'it-say', textContent: describe(item, schema), title: describe(item, schema) }),
+      mk('span', { className: 'it-btns' }, [
+        mk('button', { textContent: '↑', title: 'Đưa lên', disabled: idx === 0, onclick: (e) => { e.stopPropagation(); move(-1); } }),
+        mk('button', { textContent: '↓', title: 'Đưa xuống', disabled: idx === list.length - 1, onclick: (e) => { e.stopPropagation(); move(1); } }),
+        mk('button', { textContent: '✕', title: 'Xoá dòng này', onclick: (e) => { e.stopPropagation(); list.splice(idx, 1); changed(); rerender(); } }),
+      ]),
+    ]);
+    const kids = [head];
+    if (isOpen) {
+      const fields = def.fields.map(([k, label, kind]) => {
+        const f = field(kind, item[k], (v) => { item[k] = v; changed(); head.querySelector('.it-say').textContent = describe(item, schema); head.querySelector('.it-say').title = describe(item, schema); if (kind === 'text' || kind === 'team') renderTriggers(); }, label);
+        return label ? mk('label', { className: 'sc-f' }, [mk('small', { textContent: label }), f]) : f;
+      });
+      kids.push(mk('div', { className: 'it-body' }, [
+        mk('label', { className: 'sc-f' }, [mk('small', { textContent: 'Loại' }), typeSelect(schema, item.type, (v) => { list[idx] = freshItem(v, schema); openItems.add(list[idx]); changed(); rerender(); })]),
+        ...fields,
+      ]));
+    }
+    return mk('div', { className: 'sc-item' + (isOpen ? ' open' : ''), style: `border-left-color:${col}` }, kids);
+  }
+
+  /** Nút "+ Thêm …": chọn loại ngay trong danh sách phân nhóm rồi mới thêm (không mặc định một loại rồi phải đổi). */
+  function addPicker(schema, text, onAdd) {
+    const s = mk('select', { className: 'it-add' });
+    s.add(new Option(text, ''));
+    const groups = new Map();
+    for (const [k, v] of Object.entries(schema)) { if (!groups.has(v.cat)) groups.set(v.cat, mk('optgroup', { label: v.cat })); groups.get(v.cat).appendChild(new Option(v.label, k)); }
+    for (const g of groups.values()) s.appendChild(g);
+    s.addEventListener('change', () => { if (s.value) { const it = freshItem(s.value, schema); openItems.add(it); onAdd(it); } s.value = ''; });
+    return s;
   }
 
   // ---- Trigger: danh sách gọn ở thanh bên + cửa sổ soạn riêng (kiểu FA2sp) ----
@@ -164,7 +268,7 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
     if (!win) {
       win = mk('div', { className: 'trg-win' });
       document.body.appendChild(win);
-      const w = Math.min(window.innerWidth - 40, 1100), h = Math.min(window.innerHeight - 90, 640);
+      const w = Math.min(window.innerWidth - 40, 1240), h = Math.min(window.innerHeight - 90, 760);
       Object.assign(win.style, { width: w + 'px', height: h + 'px', left: Math.max(10, (window.innerWidth - w) / 2) + 'px', top: '50px' });
     }
     win.hidden = false;
@@ -193,8 +297,11 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
       const en = mk('input', { type: 'checkbox', checked: x.enabled, title: 'Bật sẵn' });
       en.addEventListener('click', (e) => e.stopPropagation());
       en.addEventListener('change', () => { x.enabled = en.checked; changed(); rr(); });
-      list.appendChild(mk('div', { className: 'trg-row' + (x === t ? ' sel' : ''), onclick: () => { selId = x.id; rr(); } }, [en, mk('span', { textContent: x.name, className: x.enabled ? '' : 'off' }),
-        mk('small', { textContent: `${x.conditions.length}đk · ${x.actions.length}hđ` })]));
+      const row = mk('div', { className: 'trg-row' + (x === t ? ' sel' : ''), onclick: () => { selId = x.id; rr(); } }, [en,
+        mk('div', { className: 'trg-rowtxt' }, [mk('span', { textContent: x.name, className: x.enabled ? '' : 'off' }),
+          mk('small', { textContent: `${x.conditions.length ? `${x.conditions.length} điều kiện` : 'chạy ngay'} → ${x.actions.length} hành động${x.once ? '' : ' · ⟳ lặp'}` })])]);
+      row.dataset.name = x.name.toLowerCase();
+      list.appendChild(row);
     });
     const mv = (d) => { if (!t) return; const i = s.triggers.indexOf(t), j = i + d; if (j < 0 || j >= s.triggers.length) return; [s.triggers[i], s.triggers[j]] = [s.triggers[j], s.triggers[i]]; changed(); rr(); };
     const tools = mk('div', { className: 'trg-tools' }, [
@@ -203,7 +310,9 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
       mk('button', { textContent: '↑', title: 'Đưa lên', onclick: () => mv(-1) }), mk('button', { textContent: '↓', title: 'Đưa xuống', onclick: () => mv(1) }),
       mk('button', { textContent: 'Xoá', title: 'Xoá trigger đang chọn', onclick: () => { if (!t) return; const i = s.triggers.indexOf(t); s.triggers.splice(i, 1); selId = s.triggers[Math.min(i, s.triggers.length - 1)]?.id ?? null; changed(); warn(); rr(); } }),
     ]);
-    const left = mk('div', { className: 'trg-left' }, [tools, list]);
+    const find = mk('input', { type: 'search', className: 'trg-find', placeholder: 'Tìm trigger…' });
+    find.addEventListener('input', () => { const q = find.value.trim().toLowerCase(); list.querySelectorAll('.trg-row').forEach((r) => { r.hidden = !!q && !r.dataset.name.includes(q); }); });
+    const left = mk('div', { className: 'trg-left' }, [tools, find, list]);
 
     // cột phải: thuộc tính + điều kiện | hành động
     let right;
@@ -217,18 +326,19 @@ export function initScriptUi({ $, getTerrain, changed, focusZone }) {
         ...DIFFICULTIES.map((n, k) => { const c = mk('input', { type: 'checkbox', checked: t.diff[k] }); c.addEventListener('change', () => { t.diff[k] = c.checked; changed(); }); return mk('label', { className: 'check', title: `Chạy ở độ khó ${n}` }, [c, document.createTextNode(' ' + n)]); }),
       ]);
       const cond = mk('div', { className: 'trg-col' }, [
-        mk('div', { className: 'trg-colhead' }, [mk('b', { textContent: 'Điều kiện' }), sel([['all', 'TẤT CẢ đúng'], ['any', 'MỘT TRONG đúng']], t.any ? 'any' : 'all', (v) => { t.any = v === 'any'; changed(); }, 'Cách kết hợp các điều kiện')]),
+        mk('div', { className: 'trg-colhead' }, [mk('b', { textContent: '⚑ KHI (điều kiện)', style: 'color:#d9a441' }), sel([['all', 'TẤT CẢ đúng'], ['any', 'MỘT TRONG đúng']], t.any ? 'any' : 'all', (v) => { t.any = v === 'any'; changed(); }, 'Cách kết hợp các điều kiện')]),
         mk('div', { className: 'trg-scroll trg-items' }, [
           ...t.conditions.map((c, i) => itemRow(c, COND_TYPES, t.conditions, i, rr)),
           ...(t.conditions.length ? [] : [mk('p', { className: 'empty', textContent: 'Không có điều kiện: trigger chạy ngay khi ván bắt đầu.' })])]),
-        mk('button', { className: 'wide', textContent: '+ Điều kiện', onclick: () => { t.conditions.push({ type: 'timer', seconds: 60 }); changed(); rr(); } }),
+        addPicker(COND_TYPES, '＋ Thêm điều kiện…', (it) => { t.conditions.push(it); changed(); rr(); }),
       ]);
       const act = mk('div', { className: 'trg-col' }, [
-        mk('div', { className: 'trg-colhead' }, [mk('b', { textContent: 'Hành động' })]),
+        mk('div', { className: 'trg-colhead' }, [mk('b', { textContent: '▶ THÌ (hành động)', style: 'color:#4fae6b' }), mk('small', { textContent: 'chạy lần lượt từ trên xuống', style: 'color:#8a93a1' })]),
         mk('div', { className: 'trg-scroll trg-items' }, t.actions.map((a, i) => itemRow(a, ACT_TYPES, t.actions, i, rr))),
-        mk('button', { className: 'wide', textContent: '+ Hành động', onclick: () => { t.actions.push({ type: 'message', text: '' }); changed(); rr(); } }),
+        addPicker(ACT_TYPES, '＋ Thêm hành động…', (it) => { t.actions.push(it); changed(); rr(); }),
       ]);
-      right = mk('div', { className: 'trg-right' }, [flags, mk('div', { className: 'trg-cols' }, [cond, act])]);
+      const sentence = `${t.conditions.length ? `Khi ${t.any ? 'MỘT TRONG' : 'TẤT CẢ'} ${t.conditions.length} điều kiện đúng` : 'Ngay khi ván bắt đầu'} → chạy ${t.actions.length} hành động · ${t.once ? 'một lần' : `lặp lại${t.repeat ? ` (mỗi ${t.repeat}s)` : ' mỗi giây'}`}${t.enabled ? '' : ' · ĐANG TẮT, chờ trigger khác bật'}`;
+      right = mk('div', { className: 'trg-right' }, [flags, mk('div', { className: 'trg-sentence', textContent: sentence }), mk('div', { className: 'trg-cols' }, [cond, act])]);
     }
     win.append(bar, mk('div', { className: 'trg-body' }, [left, right]));
     win.querySelectorAll('.trg-scroll').forEach((e, i) => { if (keep[i] != null) e.scrollTop = keep[i]; });

@@ -133,31 +133,41 @@ export const DIFFICULTIES = ['Dễ', 'Thường', 'Khó'];
 /**
  * Mô tả các điều kiện và hành động của trigger. Mỗi trường: [khoá, nhãn, kiểu, mặc định].
  * Kiểu: slot, slot0 (cho phép 0), zone, zone? (không bắt buộc), taskforce, unit, building, building*, res, op, int, text, bool, trigger,
- * team, order, stance, what, objstate, opset, trigop, result.
+ * team, order, stance, what, objstate, opset, trigop, result, age (0..3), sound, aistance, tech (mã công nghệ).
  */
 export const COND_TYPES = {
-  timer: { label: 'Đã qua số giây', fields: [['seconds', 'Giây', 'int', 60]] },
-  unitCount: { label: 'Số quân', fields: [['slot', 'Ô', 'slot', 1], ['unit', 'Loại', 'unit', 'any'], ['op', '', 'op', '>='], ['n', 'Số', 'int', 1]] },
-  buildingCount: { label: 'Số công trình', fields: [['slot', 'Ô', 'slot', 1], ['building', 'Loại', 'building*', 'any'], ['op', '', 'op', '>='], ['n', 'Số', 'int', 1]] },
-  inZone: { label: 'Quân ở trong vùng', fields: [['slot', 'Ô', 'slot', 1], ['zone', 'Vùng', 'zone', ''], ['op', '', 'op', '>='], ['n', 'Số', 'int', 1]] },
-  detect: { label: 'Phát hiện (tầm nhìn)', fields: [['viewer', 'Ô nhìn', 'slot', 1], ['target', 'Thấy ô', 'slot', 2], ['what', 'Thấy gì', 'what', 'any']] },
-  resource: { label: 'Tài nguyên', fields: [['slot', 'Ô', 'slot', 1], ['res', 'Loại', 'res', 'gold'], ['op', '', 'op', '>='], ['n', 'Số', 'int', 500]] },
-  flag: { label: 'Cờ / biến', fields: [['name', 'Tên cờ', 'text', 'co1'], ['op', '', 'op', '>='], ['n', 'Giá trị', 'int', 1]] },
-  teamDead: { label: 'Đội bị diệt', fields: [['team', 'Tên đội', 'team', '']] },
+  timer: { cat: 'Thời gian & biến', label: 'Đã qua số giây', fields: [['seconds', 'Giây', 'int', 60]] },
+  unitCount: { cat: 'Quân & công trình', label: 'Số quân', fields: [['slot', 'Ô', 'slot', 1], ['unit', 'Loại', 'unit', 'any'], ['op', '', 'op', '>='], ['n', 'Số', 'int', 1]] },
+  buildingCount: { cat: 'Quân & công trình', label: 'Số công trình', fields: [['slot', 'Ô', 'slot', 1], ['building', 'Loại', 'building*', 'any'], ['op', '', 'op', '>='], ['n', 'Số', 'int', 1]] },
+  inZone: { cat: 'Quân & công trình', label: 'Quân ở trong vùng', fields: [['slot', 'Ô', 'slot', 1], ['zone', 'Vùng', 'zone', ''], ['op', '', 'op', '>='], ['n', 'Số', 'int', 1]] },
+  detect: { cat: 'Quân & công trình', label: 'Phát hiện (tầm nhìn)', fields: [['viewer', 'Ô nhìn', 'slot', 1], ['target', 'Thấy ô', 'slot', 2], ['what', 'Thấy gì', 'what', 'any']] },
+  resource: { cat: 'Kinh tế', label: 'Tài nguyên', fields: [['slot', 'Ô', 'slot', 1], ['res', 'Loại', 'res', 'gold'], ['op', '', 'op', '>='], ['n', 'Số', 'int', 500]] },
+  flag: { cat: 'Thời gian & biến', label: 'Cờ / biến', fields: [['name', 'Tên cờ', 'text', 'co1'], ['op', '', 'op', '>='], ['n', 'Giá trị', 'int', 1]] },
+  ageReached: { cat: 'Thời đại & tech', label: 'Đã lên thời đại', fields: [['slot', 'Ô', 'slot', 1], ['op', '', 'op', '>='], ['n', 'Thời đại', 'age', 1]] },
+  techDone: { cat: 'Thời đại & tech', label: 'Đã nghiên cứu xong', fields: [['slot', 'Ô', 'slot', 1], ['tech', 'Mã công nghệ', 'tech', '']] },
+  population: { cat: 'Quân & công trình', label: 'Dân số', fields: [['slot', 'Ô', 'slot', 1], ['op', '', 'op', '>='], ['n', 'Số', 'int', 50]] },
+  kills: { cat: 'Quân & công trình', label: 'Số địch đã hạ', fields: [['slot', 'Ô', 'slot', 1], ['op', '', 'op', '>='], ['n', 'Số', 'int', 20]] },
+  teamCount: { cat: 'Đội quân', label: 'Số quân còn sống của đội', fields: [['team', 'Tên đội', 'team', ''], ['op', '', 'op', '<='], ['n', 'Số', 'int', 3]] },
+  teamDead: { cat: 'Đội quân', label: 'Đội bị diệt', fields: [['team', 'Tên đội', 'team', '']] },
 };
 export const ACT_TYPES = {
-  createTeam: { label: 'Lập đội quân', fields: [['slot', 'Ô', 'slot', 2], ['taskforce', 'Đội mẫu', 'taskforce', ''], ['zone', 'Tại vùng', 'zone?', ''], ['team', 'Tên đội', 'text', 'doi1']] },
-  teamOrder: { label: 'Ra lệnh cho đội', fields: [['team', 'Tên đội', 'team', ''], ['order', 'Lệnh', 'order', 'attack'], ['zone', 'Vùng', 'zone?', '']] },
-  aiJobs: { label: 'Đặt tỉ lệ dân làm việc', fields: [['slot', 'Ô', 'slot', 2], ['food', 'Ăn', 'int', 25], ['wood', 'Gỗ', 'int', 40], ['gold', 'Vàng', 'int', 20], ['stone', 'Đá', 'int', 15]] },
-  aiCheat: { label: 'Bật/tắt cheat tài nguyên', fields: [['slot', 'Ô', 'slot', 2], ['on', 'Bật', 'bool', true], ['rate', 'Mỗi loại/phút', 'int', 60]] },
-  aiBuild: { label: 'AI đặt công trình', fields: [['slot', 'Ô', 'slot', 2], ['building', 'Loại', 'building', 'barracks'], ['zone', 'Trong vùng', 'zone', '']] },
-  giveRes: { label: 'Cho / trừ tài nguyên', fields: [['slot', 'Ô', 'slot', 1], ['res', 'Loại', 'res', 'gold'], ['n', 'Số (âm = trừ)', 'int', 100]] },
-  diplomacy: { label: 'Đổi ngoại giao', fields: [['a', 'Ô A', 'slot', 1], ['b', 'Ô B', 'slot', 2], ['stance', 'Thành', 'stance', 'enemy']] },
-  objective: { label: 'Mục tiêu', fields: [['id', 'Mã', 'text', 'm1'], ['text', 'Nội dung', 'text', ''], ['state', 'Trạng thái', 'objstate', 'add']] },
-  result: { label: 'Thắng / thua kịch bản', fields: [['value', 'Kết quả', 'result', 'win'], ['text', 'Lời nhắn', 'text', '']] },
-  message: { label: 'Hiện tin nhắn', fields: [['text', 'Nội dung', 'text', '']] },
-  setFlag: { label: 'Đặt cờ / biến', fields: [['name', 'Tên cờ', 'text', 'co1'], ['op', '', 'opset', 'set'], ['n', 'Giá trị', 'int', 1]] },
-  trigger: { label: 'Điều khiển trigger khác', fields: [['id', 'Trigger', 'trigger', ''], ['op', '', 'trigop', 'enable'], ['delay', 'Chờ (giây)', 'int', 0]] },
+  createTeam: { cat: 'Đội quân', label: 'Lập đội quân', fields: [['slot', 'Ô', 'slot', 2], ['taskforce', 'Đội mẫu', 'taskforce', ''], ['zone', 'Tại vùng', 'zone?', ''], ['team', 'Tên đội', 'text', 'doi1']] },
+  teamOrder: { cat: 'Đội quân', label: 'Ra lệnh cho đội', fields: [['team', 'Tên đội', 'team', ''], ['order', 'Lệnh', 'order', 'attack'], ['zone', 'Vùng', 'zone?', '']] },
+  aiJobs: { cat: 'AI & kinh tế', label: 'Đặt tỉ lệ dân làm việc', fields: [['slot', 'Ô', 'slot', 2], ['food', 'Ăn', 'int', 25], ['wood', 'Gỗ', 'int', 40], ['gold', 'Vàng', 'int', 20], ['stone', 'Đá', 'int', 15]] },
+  aiCheat: { cat: 'AI & kinh tế', label: 'Bật/tắt cheat tài nguyên', fields: [['slot', 'Ô', 'slot', 2], ['on', 'Bật', 'bool', true], ['rate', 'Mỗi loại/phút', 'int', 60]] },
+  aiBuild: { cat: 'AI & kinh tế', label: 'AI đặt công trình', fields: [['slot', 'Ô', 'slot', 2], ['building', 'Loại', 'building', 'barracks'], ['zone', 'Trong vùng', 'zone', '']] },
+  giveRes: { cat: 'AI & kinh tế', label: 'Cho / trừ tài nguyên', fields: [['slot', 'Ô', 'slot', 1], ['res', 'Loại', 'res', 'gold'], ['n', 'Số (âm = trừ)', 'int', 100]] },
+  diplomacy: { cat: 'Thế giới', label: 'Đổi ngoại giao', fields: [['a', 'Ô A', 'slot', 1], ['b', 'Ô B', 'slot', 2], ['stance', 'Thành', 'stance', 'enemy']] },
+  objective: { cat: 'Thông báo', label: 'Mục tiêu', fields: [['id', 'Mã', 'text', 'm1'], ['text', 'Nội dung', 'text', ''], ['state', 'Trạng thái', 'objstate', 'add'], ['goal', 'Đích đếm (0 = không đếm)', 'int', 0], ['flag', 'Đếm theo cờ (vd kills_1)', 'text', '']] },
+  setAge: { cat: 'Thời đại & tech', label: 'Đặt thời đại', fields: [['slot', 'Ô', 'slot', 1], ['age', 'Thời đại', 'age', 1]] },
+  research: { cat: 'Thời đại & tech', label: 'Cho công nghệ (miễn phí)', fields: [['slot', 'Ô', 'slot', 1], ['tech', 'Mã công nghệ', 'tech', '']] },
+  killTeam: { cat: 'Đội quân', label: 'Diệt cả đội', fields: [['team', 'Tên đội', 'team', '']] },
+  setStance: { cat: 'Đội quân', label: 'Đổi thế đánh của đội', fields: [['team', 'Tên đội', 'team', ''], ['stance', 'Thế', 'aistance', 'aggressive']] },
+  sound: { cat: 'Thông báo', label: 'Phát âm thanh', fields: [['sound', 'Âm', 'sound', 'horn']] },
+  result: { cat: 'Thông báo', label: 'Thắng / thua kịch bản', fields: [['value', 'Kết quả', 'result', 'win'], ['text', 'Lời nhắn', 'text', '']] },
+  message: { cat: 'Thông báo', label: 'Hiện tin nhắn', fields: [['text', 'Nội dung', 'text', '']] },
+  setFlag: { cat: 'Thời gian & biến', label: 'Đặt cờ / biến', fields: [['name', 'Tên cờ', 'text', 'co1'], ['op', '', 'opset', 'set'], ['n', 'Giá trị', 'int', 1]] },
+  trigger: { cat: 'Thời gian & biến', label: 'Điều khiển trigger khác', fields: [['id', 'Trigger', 'trigger', ''], ['op', '', 'trigop', 'enable'], ['delay', 'Chờ (giây)', 'int', 0]] },
 };
 export const ORDERS = [['move', 'Đi tới vùng'], ['attack', 'Tấn công (đi tới vùng rồi đánh)'], ['guard', 'Canh gác tại chỗ'], ['hold', 'Đứng yên'], ['home', 'Về Town Center'], ['disband', 'Giải tán đội']];
 
@@ -186,6 +196,7 @@ function cleanParams(src, schema) {
   for (const [k, , kind, def] of schema.fields) {
     const v = src?.[k];
     if (kind === 'int' || kind === 'slot' || kind === 'slot0') out[k] = num(v, kind === 'int' ? -999999 : 0, kind === 'int' ? 999999 : MAX_PLAYERS, def);
+    else if (kind === 'age') out[k] = num(v, 0, 3, def);
     else if (kind === 'bool') out[k] = v === undefined ? def : !!v;
     else out[k] = str(v, def, 200);
   }
